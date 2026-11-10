@@ -1,0 +1,157 @@
+name: Release
+
+# A tag v*.*.* builds everything and opens a draft release: the signed launcher APK, the Windows
+# installer and the macOS disk image. Pull requests run the cheap checks only.
+on:
+  push:
+    tags: ['v*.*.*']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Typecheck and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: cleanmytv/package-lock.json }
+      - run: npm ci
+        working-directory: cleanmytv
+      # The tests symlink resources/upstream, which this pulls from the pinned commit.
+      - run: npm run sync
+        working-directory: cleanmytv
+      - run: npm run typecheck
+        working-directory: cleanmytv
+      - run: npm test
+        working-directory: cleanmytv
+
+  apk:
+    name: Launcher APK
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      GLASSIO_STORE_BASE64: ${{ secrets.GLASSIO_STORE_BASE64 }}
+      GLASSIO_STORE_PASSWORD: ${{ secrets.GLASSIO_STORE_PASSWORD }}
+      GLASSIO_KEY_ALIAS: ${{ secrets.GLASSIO_KEY_ALIAS || 'glassio' }}
+      GLASSIO_KEY_PASSWORD: ${{ secrets.GLASSIO_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      # GitHub's runners ship the command-line tools; the platform and build-tools are fetched.
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+      # The release key, so an update on the TV installs over the running copy. Without the secrets
+      # the build falls back to the debug key and the APK is for testing only.
+      - name: Release key
+        if: env.GLASSIO_STORE_BASE64 != ''
+        run: |
+          mkdir -p glassio/keystore
+          printf '%s' "$GLASSIO_STORE_BASE64" | base64 -d > glassio/keystore/glassio.jks
+      - name: Build the release APK
+        working-directory: glassio
+        env:
+          GLASSIO_STORE_FILE: ${{ env.GLASSIO_STORE_BASE64 != '' && 'keystore/glassio.jks' || '' }}
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --no-daemon --console=plain
+      - name: Version and manifest
+        working-directory: glassio
+        run: |
+          NAME=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -n 1)
+          CODE=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -n 1)
+          test -n "$NAME" || { echo "no versionName in app/build.gradle.kts"; exit 1; }
+          mkdir -p ../dist
+          cp app/build/outputs/apk/release/app-release.apk ../dist/glassio.apk
+          printf '{\n  "versionName": "%s",\n  "versionCode": %s\n}\n' "$NAME" "$CODE" > ../dist/glassio.json
+          echo "built GlassMyTV $NAME ($CODE)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: glassio-apk
+          path: |
+            dist/glassio.apk
+            dist/glassio.json
+          if-no-files-found: error
+
+  app:
+    name: Installer (${{ matrix.os }})
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: [test, apk]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: cleanmytv/package-lock.json }
+      - run: npm ci
+        working-directory: cleanmytv
+      - run: npm run sync
+        working-directory: cleanmytv
+      # The APK the desktop app bundles and installs on the TV.
+      - uses: actions/download-artifact@v4
+        with: { name: glassio-apk, path: cleanmytv/resources }
+      - run: npm run dist:${{ matrix.os == 'windows-latest' && 'win' || 'mac' }}
+        working-directory: cleanmytv
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ runner.os }}
+          path: |
+            cleanmytv/dist/*.dmg
+            cleanmytv/dist/*.exe
+          if-no-files-found: error
+
+  release:
+    name: Draft release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      # The tag, the launcher and the desktop app carry one version.
+      - name: Versions match the tag
+        run: |
+          LAUNCHER=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' glassio/app/build.gradle.kts | head -n 1)
+          DESKTOP=$(node -p "require('./cleanmytv/package.json').version")
+          WANT="v$LAUNCHER"
+          test "$GITHUB_REF_NAME" = "$WANT" || { echo "tag $GITHUB_REF_NAME does not match the launcher version $WANT"; exit 1; }
+          test "$DESKTOP" = "$LAUNCHER" || { echo "cleanmytv/package.json is $DESKTOP, the launcher is $LAUNCHER"; exit 1; }
+      - uses: actions/download-artifact@v4
+        with: { pattern: '{glassio-apk,installer-*}', path: dist, merge-multiple: true }
+      # The launcher's updater takes the first asset ending in .apk, so exactly one may be attached.
+      - name: Exactly one APK
+        run: |
+          COUNT=$(find dist -name '*.apk' | wc -l)
+          test "$COUNT" = "1" || { echo "the release must carry exactly one APK, found $COUNT"; exit 1; }
+          ls -la dist
+      - name: Checksums
+        run: cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      # A draft: nothing is public until the owner reviews it and presses Publish. A release made by
+      # hand for this tag is left as it is.
+      - run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME already exists; leaving it alone"
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* --draft --title "GlassMyTV $GITHUB_REF_NAME" --generate-notes --repo "$GITHUB_REPOSITORY"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
