@@ -225,7 +225,10 @@ fun SetupScreen(app: GlassApp, onDone: () -> Unit) {
                                     else run("Asking the TV") { true }
                                 },
                                 tick("key", "Home button") to { run("Turning on the Home button service") { sys.enableHomeKey(app) } },
-                                tick("home", "Default home app") to { run("Making GlassMyTV the home app") { sys.makeHomeApp(app) } },
+                                tick("home", "Default home app") to {
+                                    if (state["adb"] == true) run("Making GlassMyTV the home app") { sys.makeHomeApp(app) }
+                                    else if (!sys.askForHomeRole(app)) busy = "This TV has no home-app dialog: use Settings → Apps → Home app, or allow TV access (ADB) below"
+                                },
                                 tick("saver", "Default screensaver") to { run("Making GlassMyTV the screensaver") { sys.makeScreensaver(app) } },
                                 tick("boot", "Start with the TV") to { run("Starting with the TV") { sys.startWithTv(app, st) } },
                             ), wrap = true)

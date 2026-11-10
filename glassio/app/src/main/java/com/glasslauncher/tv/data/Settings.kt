@@ -586,6 +586,8 @@ class Settings(private val ctx: Context) {
     var lang: String get() = s("lang", I18n.DEFAULT); set(v) { putS("lang", v); I18n.lang = v }
     /** The first-run setup was finished (or skipped with Later). */
     var setupDone: Boolean get() = b("setupDone", false); set(v) = putB("setupDone", v)
+    /** The TV's "Use GlassMyTV as Home?" dialog was asked once, so it doesn't come back every start. */
+    var homeAsked: Boolean get() = b("homeAsked", false); set(v) = putB("homeAsked", v)
     /** The What's new tour last seen (WhatsNew.ID). */
     var tourSeen: Int get() = i("tourSeen", 0); set(v) = putI("tourSeen", v)
 }

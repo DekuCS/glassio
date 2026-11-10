@@ -164,7 +164,9 @@ private fun MenuDialogView(d: MenuDialog, onDismiss: () -> Unit) {
 @Composable
 private fun KeyCaptureView(d: KeyCaptureDialog, onDismiss: () -> Unit) {
     val fr = remember { FocusRequester() }
-    var hint by remember { mutableStateOf("Press the button on the remote you want to use (Back cancels)") }
+    var hint by remember { mutableStateOf(if (com.glasslauncher.tv.HomeKeyService.instance == null)
+        "The Home button service is off, so the TV's own keys (Netflix, YouTube, Prime) never reach this screen: they start their own app instead. Turn it on in Settings → System, then add the button again. Back cancels"
+    else "Press the button on the remote you want to use (Back cancels)") }
     // The OK that opened this is still being released: ignored.
     var armed by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = onDismiss) {

@@ -26,7 +26,12 @@ class NuvioAccount(ctx: Context) {
     /** The page where a TV code is approved (the official nuvio.tv one by default). */
     val loginPage: String get() = sp.getString("loginPage", "").orEmpty().ifBlank { if (custom) "" else OFFICIAL_LOGIN }
     val custom: Boolean get() = server.isNotBlank()
-    private val key: String get() = if (custom) customKey else BuildConfig.NUVIO_ANON_KEY
+    /**
+     * A build without its own app id (a fork, or a clone without local.properties) would send an empty
+     * "apikey" and Nuvio answers HTTP 401. [OFFICIAL_ANON] is the anonymous key api.nuvio.tv hands to
+     * every client, the one nuvio.tv's own web app ships, so an unconfigured build still connects.
+     */
+    private val key: String get() = if (custom) customKey else BuildConfig.NUVIO_ANON_KEY.ifBlank { OFFICIAL_ANON }
     private val base: String get() = if (custom) server else OFFICIAL
 
     /**
@@ -70,7 +75,7 @@ class NuvioAccount(ctx: Context) {
     fun startLogin(): Code {
         val (sc, st) = call("/auth/v1/signup", JSONObject(), null)
         val anon = if (sc in 200..299) JSONObject(st).optString("access_token") else ""
-        check(anon.isNotBlank()) { "Nuvio answered HTTP $sc" }
+        check(anon.isNotBlank()) { "Nuvio answered HTTP $sc" + refused(sc) }
         val nonce = java.util.UUID.randomUUID().toString()
         fun start(withName: Boolean) = call("/rest/v1/rpc/start_tv_login_session", JSONObject()
             .put("p_device_nonce", nonce).apply { if (loginPage.isNotBlank()) put("p_redirect_base_url", loginPage) }
@@ -148,9 +153,22 @@ class NuvioAccount(ctx: Context) {
     /** Signs out (the server chosen stays). */
     fun signOut() { sp.edit().remove("access").remove("refresh").remove("exp").remove("email").apply() }
 
+    /** What an HTTP 401/403 from Nuvio's gateway means, in words a TV owner can act on. */
+    private fun refused(status: Int): String = when (status) {
+        401, 403 -> " — the app key was refused. Set your own Nuvio server and its anon key in Settings → Connections"
+        else -> ""
+    }
+
     companion object {
         const val OFFICIAL = "https://api.nuvio.tv"
         const val OFFICIAL_LOGIN = "https://nuvio.tv/tv-login"
+
+        /**
+         * The public anonymous key of api.nuvio.tv (role "anon", issued for nuvio.tv's own web app, valid
+         * to 2031). It names the app, not a person; every account still signs in for itself. Used only when
+         * the build carries no NUVIO_ANON_KEY of its own.
+         */
+        const val OFFICIAL_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgxNTIxMzQ2LCJleHAiOjE5MzkyMDEzNDZ9.tmQaj682pwzehpqlgCDMnySOqiUvpgRbrE43T4VJpDI"
     }
 
     private fun rawPage(profile: Int, offset: Int, tok0: String): Pair<JSONArray, String> {

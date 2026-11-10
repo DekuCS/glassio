@@ -46,6 +46,24 @@ object SystemSetup {
         return isHomeApp(ctx)
     }
 
+    /**
+     * Asks Android to make GlassMyTV the home app through its own dialog, so no ADB is needed: the TV
+     * puts up "Use GlassMyTV as Home?" and the owner presses OK. False when this TV doesn't offer the
+     * role for Home (then the home-app settings page is the way).
+     */
+    @android.annotation.SuppressLint("NewApi")
+    fun askForHomeRole(ctx: Context): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < 29) return false
+        val rm = runCatching { ctx.getSystemService(android.app.role.RoleManager::class.java) }.getOrNull() ?: return false
+        val role = android.app.role.RoleManager.ROLE_HOME
+        if (!runCatching { rm.isRoleAvailable(role) }.getOrDefault(false)) return false
+        if (runCatching { rm.isRoleHeld(role) }.getOrDefault(false)) return true
+        return runCatching {
+            ctx.startActivity(rm.createRequestRoleIntent(role).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            true
+        }.getOrDefault(false)
+    }
+
     fun isScreensaver(ctx: Context): Boolean = runCatching {
         val cr = ctx.contentResolver
         android.provider.Settings.Secure.getInt(cr, "screensaver_enabled", 1) == 1 &&

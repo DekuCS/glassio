@@ -61,6 +61,15 @@ class MainActivity : ComponentActivity() {
             com.glasslauncher.tv.ui.GlassType {
                 var setup by androidx.compose.runtime.remember { mutableStateOf(!app.settings.setupDone) }
                 LaunchedEffect(app.requestSetup.intValue) { if (app.requestSetup.intValue > 0) setup = true }
+                // Not the home app yet: ask once, in the TV's own dialog, so a fresh install lands on Home without ADB.
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    if (!app.settings.setupDone || app.settings.homeAsked) return@LaunchedEffect
+                    app.settings.homeAsked = true
+                    kotlinx.coroutines.delay(1500)
+                    if (!com.glasslauncher.tv.data.SystemSetup.isHomeApp(this@MainActivity)) {
+                        com.glasslauncher.tv.data.SystemSetup.askForHomeRole(this@MainActivity)
+                    }
+                }
                 // GlassMyTV's own accessibility service (the Home key) counts as "accessibility on", so Compose kept
                 // checking the whole screen's semantics after every change (~7 ms on the main thread, many times a
                 // second, also while the carousel slid). Without a screen reader there's nobody to read them: the

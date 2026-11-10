@@ -70,6 +70,7 @@ import com.glasslauncher.tv.saver.ScreensaverActivity
 import com.glasslauncher.tv.saver.AerialSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 private sealed interface SRow
@@ -1191,7 +1192,16 @@ fun SettingsScreen(app: GlassApp, initialCat: Int, onClose: () -> Unit) {
                 },
             )
             buildList {
-                if (!svcOn) add(Note("Buttons in other apps need the Home button service: System → Home button service."))
+                if (!svcOn) {
+                    add(Note("The Netflix, YouTube, Prime and colour keys are handled by the TV itself before any app sees them. Only the Home button service can take them: without it they keep opening their own app and this screen can't catch them."))
+                    add(Act("Turn the Home button service on", "Over the TV's own ADB, so no settings screen is needed. Needs TV access (ADB) once: System → TV access (ADB)", "Turn on") {
+                        scope.launch {
+                            val ok = withContext(Dispatchers.IO) { com.glasslauncher.tv.data.SystemSetup.enableHomeKey(ctx) }
+                            homeKeyOn = isHomeKeyOn(ctx); tvRev.intValue++
+                            toast(ctx, if (ok) "Home button service on" else "Allow TV access (ADB) first: System → TV access (ADB)")
+                        }
+                    })
+                } else add(Note("Netflix, YouTube and the colour keys are taken before the TV starts their own app, so they work here."))
                 add(Note("Buttons that open something"))
                 com.glasslauncher.tv.data.RemoteMap.all(st).forEach { m ->
                     add(Act(keyName(m.code), com.glasslauncher.tv.data.RemoteMap.describe(m), "Change") {
@@ -1381,6 +1391,17 @@ fun SettingsScreen(app: GlassApp, initialCat: Int, onClose: () -> Unit) {
                     }
                 },
                 Act("Choose default home app", "", "") { openSystem(ctx, AndroidSettings.ACTION_HOME_SETTINGS) },
+                Act("Make GlassMyTV the default Home",
+                    if (com.glasslauncher.tv.data.SystemSetup.isHomeApp(ctx)) "GlassMyTV is the home app now"
+                    else "One press: over the TV's own ADB when it is allowed, otherwise the TV puts up its own dialog. No ADB needed for the dialog",
+                    if (com.glasslauncher.tv.data.SystemSetup.isHomeApp(ctx)) "On" else "Set",
+                    ok = if (com.glasslauncher.tv.data.SystemSetup.isHomeApp(ctx)) true else null) {
+                    scope.launch {
+                        val done = withContext(Dispatchers.IO) { com.glasslauncher.tv.data.SystemSetup.makeHomeApp(ctx) }
+                        if (done) { tvRev.intValue++; toast(ctx, "GlassMyTV is the home app") }
+                        else if (!com.glasslauncher.tv.data.SystemSetup.askForHomeRole(ctx)) openSystem(ctx, AndroidSettings.ACTION_HOME_SETTINGS)
+                    }
+                },
                 Toggle("Open GlassMyTV when the TV starts", "GlassMyTV opens on its own after the TV turns on. The right to do so is given over ADB (TV access, below)", { st.bootStart }, { on ->
                     st.bootStart = on
                     if (on) scope.launch(Dispatchers.IO) {

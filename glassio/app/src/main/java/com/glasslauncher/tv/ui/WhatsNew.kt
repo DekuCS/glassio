@@ -41,11 +41,18 @@ import com.glasslauncher.tv.GlassApp
  */
 object WhatsNew {
     /** Bumped when the tour has new pages: everyone who updates sees it once. */
-    const val ID = 57
+    const val ID = 58
 
     class Page(val title: String, val points: List<String>, val where: String)
 
     val PAGES = listOf(
+        Page("What's new in GlassMyTV 1.0.1", listOf(
+            "Nuvio: connecting no longer stops at HTTP 401 — every build now carries a working app key.",
+            "Remote: the Netflix, YouTube, Prime and colour keys can be mapped when the Home button service is on — GlassMyTV takes them before the TV starts their own app.",
+            "The Home button service is one press away in Settings → Remote mapping.",
+            "Settings → System has \"Make GlassMyTV the default Home\": the TV asks, no ADB needed.",
+            "◀ ▶ to look through · OK for the next page · Back to close.",
+        ), "Nuvio: Settings → Connections · Remote: Settings → Remote mapping · Home app: Settings → System."),
         Page("What's new in GlassMyTV 3.2.2", listOf(
             "Trailers no longer stop by themselves after a few seconds.",
             "Trailer sound fixed: it played twice, slightly apart.",
