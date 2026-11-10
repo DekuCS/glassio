@@ -1,0 +1,29 @@
+# Workspace notes and scratch tools live here; none of it belongs in the repository.
+AGENTS.md
+tools/
+*.log
+de-en.txt
+de-strings.json
+de-strings-filtered.json
+extract-de.js
+count-lit.js
+count2.js
+
+# Build output
+glassio/build/
+glassio/.gradle/
+glassio/.kotlin/
+glassio/local.properties
+glassio/keystore/
+cleanmytv/build/
+cleanmytv/dist/
+cleanmytv/out/
+cleanmytv/node_modules/
+cleanmytv/.cytv-data/
+
+# Launcher APK the desktop app ships: built by npm run launcher, not committed
+cleanmytv/resources/glassio.apk
+cleanmytv/resources/glassio.json
+cleanmytv/resources/upstream/
+
+.DS_Store

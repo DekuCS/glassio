@@ -1,0 +1,20 @@
+# One checkout line ending everywhere, so the Gradle wrapper and CI scripts keep working.
+* text=auto eol=lf
+
+# Builders and images stay byte for byte.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.icns binary
+*.jks binary
+*.apk binary
+*.dmg binary
+*.exe binary
+*.jar binary
+
+# Windows needs CRLF for its own scripts.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
