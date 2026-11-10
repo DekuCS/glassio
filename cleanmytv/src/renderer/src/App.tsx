@@ -1,0 +1,248 @@
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import type { ConnStatus, HomeStatus, KnownTv, UpdateInfo } from '@shared/api'
+import { Jump, MOD_KEY, type JumpItem } from './components/Jump'
+import { LogDrawer } from './components/LogDrawer'
+import { NotConnected } from './components/ui'
+import { TvThumb } from './components/TvPicker'
+import { thumbnail } from './lib/image'
+import Guided from './screens/Guided'
+import { Setup } from './screens/Setup'
+import { Debloat } from './screens/Debloat'
+import { Launcher } from './screens/Launcher'
+import { Extras } from './screens/Extras'
+import { Sideload } from './screens/Sideload'
+import { Finish } from './screens/Finish'
+import { version } from '../../../package.json'
+
+const REPO_URL = 'https://github.com/DekuCS/glassio'
+
+export type StepId = 'guided' | 'setup' | 'debloat' | 'home' | 'extras' | 'sideload' | 'finish'
+
+const STEPS: { id: StepId; label: string; sub: string; needsTv: boolean }[] = [
+  // The guided one-button run (#9): composes the same IPC the step screens
+  // use, so first-time owners get one path while every step stays reachable.
+  { id: 'guided', label: 'Clean & launch', sub: 'One button, every step', needsTv: true },
+  { id: 'setup', label: 'Setup', sub: 'Check and connect', needsTv: false },
+  { id: 'debloat', label: 'Clean up', sub: 'Turn off the bloat', needsTv: true },
+  { id: 'home', label: 'Launcher', sub: 'Install GlassMyTV', needsTv: true },
+  { id: 'extras', label: 'TV extras', sub: 'DNS, animations, remote', needsTv: true },
+  { id: 'sideload', label: 'Install an app', sub: 'From an .apk file', needsTv: true },
+  { id: 'finish', label: 'Finish', sub: 'Close the debug port', needsTv: false }
+]
+
+export interface ScreenProps {
+  status: ConnStatus
+  go: (step: StepId) => void
+  markDone: (step: StepId) => void
+  /** TVs used before, most recent first. */
+  tvs: KnownTv[]
+  refreshTvs: () => void
+  /** The Launcher step passes on each status it reads, so the sidebar's update note goes after an update. */
+  homeSeen: (hs: HomeStatus) => void
+}
+
+// What ⌘K finds. "home:<tab>" opens the Launcher step.
+const JUMP_ITEMS: JumpItem[] = [
+  ...STEPS.map((s) => ({ id: `step:${s.id}`, title: s.label, where: 'Step', words: s.sub.toLowerCase() })),
+  { id: 'step:setup', title: 'Pair with a code', where: 'Setup', words: 'connect wireless debugging adb ip' },
+  { id: 'step:debloat', title: 'Restore', where: 'Clean up', words: 'undo put back packages' },
+  { id: 'step:debloat', title: 'Add a package', where: 'Clean up', words: 'package app missing list' },
+  { id: 'step:home', title: 'Install or update GlassMyTV', where: 'Launcher', words: 'launcher home screen stock give back update' },
+  { id: 'step:home', title: 'Give Home back to the stock launcher', where: 'Launcher', words: 'undo rollback stock launcher' },
+  { id: 'step:extras', title: 'Animation speed', where: 'TV extras', words: 'animations faster' },
+  { id: 'step:extras', title: 'Block ads inside apps', where: 'TV extras', words: 'dns private ad blocking adguard' },
+  { id: 'step:extras', title: 'Remote', where: 'TV extras', words: 'buttons keys' },
+  { id: 'step:extras', title: 'Storage', where: 'TV extras', words: 'space disk free' },
+  { id: 'step:finish', title: 'Restart check', where: 'Finish', words: 'reboot' },
+].map((it, i) => ({ ...it, id: `${it.id}#${i}` }))
+
+// A fresh snapshot for the sidebar and the TV list when the last one is older than this.
+const THUMB_MAX_AGE = 6 * 3600_000
+
+export default function App(): ReactNode {
+  const [step, setStep] = useState<StepId>(() => {
+    const h = location.hash.slice(1)
+    return STEPS.some((s) => s.id === h) ? (h as StepId) : 'setup'
+  })
+  const [status, setStatus] = useState<ConnStatus>({ state: 'idle' })
+  const [done, setDone] = useState<Set<StepId>>(new Set())
+  const [tvs, setTvs] = useState<KnownTv[]>([])
+  const [update, setUpdate] = useState<UpdateInfo | null>(null)
+  // The TV runs an older GlassMyTV than this app carries.
+  const [homeBehind, setHomeBehind] = useState(false)
+  const [jumping, setJumping] = useState(false)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setJumping((j) => !j)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  function jump(id: string): void {
+    setJumping(false)
+    const [, rest] = id.split('#')[0].split(':')
+    setStep(rest as StepId)
+  }
+
+  useEffect(() => {
+    window.cytv.checkUpdate().then(setUpdate, () => null)
+  }, [])
+
+  const refreshTvs = useCallback(() => {
+    window.cytv.knownTvs().then(setTvs, () => null)
+  }, [])
+  useEffect(() => {
+    refreshTvs()
+  }, [refreshTvs])
+
+  // On connecting: refresh the TV list and, if its snapshot is missing or old, take a new one quietly.
+  useEffect(() => {
+    if (status.state !== 'connected' || !status.host) return
+    const host = status.host
+    let stale = false
+    window.cytv.knownTvs().then(async (list) => {
+      setTvs(list)
+      const tv = list.find((t) => t.host === host)
+      if (!tv || (tv.thumb && Date.now() - (tv.thumbAt ?? 0) < THUMB_MAX_AGE)) return
+      const shot = await window.cytv.thumbShot().catch(() => null)
+      if (!shot || stale) return
+      setTvs(await window.cytv.saveTvThumb(host, await thumbnail(shot)))
+    }).catch(() => null)
+    return () => { stale = true }
+  }, [status.state, status.host])
+
+  function homeSeen(hs: HomeStatus): void {
+    setHomeBehind(hs.installed && !!hs.bundledVersion && hs.versionName !== hs.bundledVersion)
+  }
+
+  // Checked again on every step change, so the note goes once the Launcher step has updated the TV.
+  useEffect(() => {
+    if (status.state !== 'connected') return setHomeBehind(false)
+    let stale = false
+    window.cytv.launcherStatus().then((hs) => { if (!stale) homeSeen(hs) }, () => null)
+    return () => { stale = true }
+  }, [status.state, status.host, step])
+
+  useEffect(() => {
+    // Coming back later to change the wallpaper or the order: reconnect to the last TV by itself.
+    window.cytv.status().then((s) => {
+      setStatus(s)
+      if (s.state !== 'idle') return
+      window.cytv.reconnect().then(async (r) => {
+        if (r?.state !== 'connected') return
+        // A TV that already runs GlassMyTV is here to be switched back or updated: open that step.
+        const hs = await window.cytv.launcherStatus().catch(() => null)
+        if (hs?.isHome) {
+          setDone((prev) => new Set(prev).add('home'))
+          setStep((cur) => (cur === 'setup' ? 'home' : cur))
+        }
+      }).catch(() => null)
+    })
+    return window.cytv.onStatus(setStatus)
+  }, [])
+
+  const connected = status.state === 'connected'
+  const markDone = (s: StepId): void => setDone((prev) => new Set(prev).add(s))
+  const props: ScreenProps = { status, go: setStep, markDone, tvs, refreshTvs, homeSeen }
+  const steps = STEPS
+  const current = steps.find((s) => s.id === step) ?? STEPS[1]
+  const currentTv = connected ? tvs.find((t) => t.host === status.host) : undefined
+
+  let screen: ReactNode
+  if (current.needsTv && !connected) screen = <NotConnected onGo={() => setStep('setup')} />
+  else if (current.id === 'guided') screen = <Guided {...props} />
+  else if (current.id === 'setup') screen = <Setup {...props} />
+  else if (current.id === 'debloat') screen = <Debloat {...props} />
+  else if (current.id === 'home') screen = <Launcher {...props} />
+  else if (current.id === 'extras') screen = <Extras {...props} />
+  else if (current.id === 'sideload') screen = <Sideload {...props} />
+  else screen = <Finish {...props} />
+
+  return (
+    <div className="app">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-mark" aria-hidden />
+          <span className="brand-name">GlassMyTV</span>
+        </div>
+        {currentTv?.thumb && (
+          <button className="sidebar-tv" onClick={() => setStep('setup')} title="This TV. Open Setup to switch TVs." style={{ all: 'unset', cursor: 'pointer', display: 'block', marginBottom: 10 }}>
+            <TvThumb tv={currentTv} />
+          </button>
+        )}
+        <ConnPill status={status} />
+        <button className="jump-btn" onClick={() => setJumping(true)}>
+          <span>Find a setting</span>
+          <kbd>{MOD_KEY}K</kbd>
+        </button>
+        <nav>
+          <ol className="steps">
+            {steps.map((s, i) => {
+              const isDone = s.id === 'setup' ? connected : s.id === 'guided' ? done.has('debloat') && done.has('home') : done.has(s.id)
+              return (
+                <li key={s.id}>
+                  <button
+                    className={`step${s.id === step ? ' active' : ''}${isDone ? ' done' : ''}`}
+                    onClick={() => setStep(s.id)}
+                    aria-current={s.id === step ? 'step' : undefined}
+                  >
+                    <span className="step-num">{isDone ? '✓' : i + 1}</span>
+                    <span className="step-label">
+                      {s.label}
+                      <span className="step-sub">{s.id === 'home' && connected && homeBehind ? 'Update ready for this TV' : s.sub}</span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ol>
+        </nav>
+        <div className="sidebar-foot">
+          Nothing is uninstalled. Every change can be undone from this app or the TV's Settings → Apps.
+          <a className="gh-link" href={REPO_URL} target="_blank" rel="noreferrer" title="Source, releases and issues on GitHub">
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+            </svg>
+            <span>DekuCS/glassio</span>
+          </a>
+          <div className="gh-ver">GlassMyTV v{version} · GPL-3.0</div>
+          {update?.available && (
+            <a className="update-link" href={update.url} target="_blank" rel="noreferrer">
+              Version {update.latest} is out. Download it
+            </a>
+          )}
+        </div>
+      </aside>
+      <main className="main">
+        <div className="content">{screen}</div>
+        <LogDrawer />
+      </main>
+      {jumping && <Jump items={JUMP_ITEMS} onPick={jump} onClose={() => setJumping(false)} />}
+    </div>
+  )
+}
+
+function ConnPill({ status }: { status: ConnStatus }): ReactNode {
+  const p = status.probe
+  const [dot, text] =
+    status.state === 'connected'
+      ? ['ok', p ? `${p.manufacturer} ${p.model}` : status.host ?? 'Connected']
+      : status.state === 'connecting'
+        ? ['busy', `Connecting to ${status.host ?? 'TV'}`]
+        : status.state === 'waiting-auth'
+          ? ['busy', 'Waiting for Allow on the TV']
+          : status.state === 'error'
+            ? ['err', 'Not connected']
+            : ['idle', 'No TV connected']
+  return (
+    <div className="conn-pill" title={status.error ?? status.host}>
+      <span className={`dot ${dot}`} />
+      <span>{text}</span>
+    </div>
+  )
+}

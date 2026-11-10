@@ -1,0 +1,49 @@
+{
+  "name": "glassmytv",
+  "productName": "GlassMyTV",
+  "version": "1.0.0",
+  "description": "Desktop companion for GlassMyTV: debloat an Android TV and install the GlassMyTV launcher, with nothing else to install.",
+  "license": "GPL-3.0-only",
+  "author": "DekuCS",
+  "homepage": "https://github.com/DekuCS/glassio",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DekuCS/glassio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DekuCS/glassio/issues"
+  },
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "sync": "node scripts/sync-upstream.mjs",
+    "launcher": "tsx scripts/build-glassio.ts",
+    "dist:mac": "electron-vite build && electron-builder --mac --publish never",
+    "dist:win": "electron-vite build && electron-builder --win --publish never"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.9.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^6.0.0",
+    "playwright-core": "^1.64.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^4.1.12"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  }
+}
