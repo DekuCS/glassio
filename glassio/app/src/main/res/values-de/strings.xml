@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Deutsche Fassung der Ressourcen-Strings. Die sichtbaren Texte der App liegen zum größten Teil in
+  data/I18nDe.kt (das eigene Sprachsystem der App: Einstellungen → Sprache); hier stehen die Strings,
+  die Android selbst auflöst (App-Name, Bedienungshilfen-Beschreibung).
+-->
+<resources>
+    <string name="app_name">GlassMyTV</string>
+    <string name="accessibility_description">Holt GlassMyTV nach vorn, wenn die Home-Taste den Werks-Launcher öffnet.</string>
+</resources>

@@ -1,0 +1,9 @@
+﻿build/
+.gradle/
+.kotlin/
+local.properties
+*.apk
+.DS_Store
+releases/
+# The release signing key: kept out of the repository, fed to the build from local.properties or CI secrets.
+keystore/

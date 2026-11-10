@@ -1,0 +1,15 @@
+package com.glasslauncher.tv.data
+
+import android.util.Log
+
+/**
+ * One log tag for everything that can go wrong quietly (network, Trakt, the TV's adb, opening a title).
+ * To see it: adb logcat -s GlassMyTV
+ */
+object Glog {
+    const val TAG = "GlassMyTV"
+    fun w(what: String, e: Throwable? = null) { Log.w(TAG, if (e != null) "$what: ${e.javaClass.simpleName}: ${e.message}" else what) }
+    fun i(what: String) { Log.i(TAG, what) }
+    /** Test only (am start --ez timing true): logs how long each slide takes to be ready. */
+    @Volatile var timing = false
+}
