@@ -48,9 +48,13 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
-      # GitHub's runners ship the command-line tools; the platform and build-tools are fetched.
-      - uses: android-actions/setup-android@v3
-      - run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+      # GitHub's runners ship the SDK and the command-line tools, so only the platform and the
+      # build-tools are fetched. android-actions/setup-android is not used: it runs `sdkmanager tools`,
+      # which the command-line tools 16 in the runner image no longer carry.
+      - name: Android SDK
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
       # The release key, so an update on the TV installs over the running copy. Without the secrets
       # the build falls back to the debug key and the APK is for testing only.
