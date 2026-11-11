@@ -44,6 +44,8 @@ object DevHooks {
             app.apps.ordered(includeHidden = true).firstOrNull { it.pkg == pkg }?.let { e -> com.glasslauncher.tv.ui.AppLock.open(app, a, e) }
         }
         i.getIntExtra("open_settings", -1).takeIf { it >= 0 }?.let { app.requestSettings.intValue = it; app.requestSettingsRev.intValue++ }
+        // The music page on screen without touching the dock (--ez show_music true), for looking at it.
+        if (i.getBooleanExtra("show_music", false)) com.glasslauncher.tv.ui.MusicUi.forced.value = true
         // What the music page would do right now (read-only): the song, the selected tile, and the switches.
         if (i.getBooleanExtra("dump_music", false)) {
             val t = com.glasslauncher.tv.data.NowPlaying.track.value

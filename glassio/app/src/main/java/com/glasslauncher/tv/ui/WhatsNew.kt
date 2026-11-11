@@ -41,11 +41,17 @@ import com.glasslauncher.tv.GlassApp
  */
 object WhatsNew {
     /** Bumped when the tour has new pages: everyone who updates sees it once. */
-    const val ID = 62
+    const val ID = 63
 
     class Page(val title: String, val points: List<String>, val where: String)
 
     val PAGES = listOf(
+        Page("What's new in GlassMyTV 1.0.6", listOf(
+            "The player has the layout of a record sleeve now: the song's name and the artist sit above the cover, the cover is large and round-cornered on the left, the progress bar with both times runs under it and the five buttons sit under that.",
+            "The cover breathes its own colour faintly behind it, the bar has a light knob where the song stands, and the player makes itself just small enough to fit above the dock — it never runs under it, whatever size and place you chose.",
+            "The lyrics are centred like a lyric sheet and quieter the further they are from the line being sung: the line that is sung grows, brightens and gets a short bar in the song's colour under it. The block still slides line by line, and after a break in the song the words fade back in together.",
+            "◀ ▶ to look through · OK for the next page · Back to close.",
+        ), "Music: Settings → Music — Player for the size and the place of the whole player, Lyrics for the size and the place of the words."),
         Page("What's new in GlassMyTV 1.0.5", listOf(
             "The player comes up while the selection sits on the tile of the app that plays: the Spotify tile shows the player, any other tile (Nuvio, Netflix…) the ordinary home screen. Music · \"Only while the music app is selected\".",
             "The player's page is yours: its size, and where it sits — the artwork with its buttons and the lyrics each have their own size and their own place. Settings → Music · Player and Lyrics.",

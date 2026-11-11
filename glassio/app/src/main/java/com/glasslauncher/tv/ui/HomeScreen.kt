@@ -1424,7 +1424,7 @@ private fun HeroSection(
         val dockUp by animateFloatAsState(if (dockShown.value > 0.5f) metrics.collapsedH + metrics.bottomMargin else 0f, tween(300), label = "subsUp")
         if (!customBg && !musicStage && settings.trailerSize != "popup") TrailerLayer(app, s, dockUp)
         if (musicStage) {
-            MusicStage(app, s, heroFocus, firstTile)
+            MusicStage(app, s, heroFocus, firstTile, metrics.collapsedH + metrics.bottomMargin)
         } else if (customBg) {
             // A large clock (with the depth effect on photos), and the place / credit of what's behind.
             if (settings.bgClock) BigClock(settings, s)
