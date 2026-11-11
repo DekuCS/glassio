@@ -41,11 +41,18 @@ import com.glasslauncher.tv.GlassApp
  */
 object WhatsNew {
     /** Bumped when the tour has new pages: everyone who updates sees it once. */
-    const val ID = 58
+    const val ID = 59
 
     class Page(val title: String, val points: List<String>, val where: String)
 
     val PAGES = listOf(
+        Page("What's new in GlassMyTV 1.0.2", listOf(
+            "One button sets it all up: home app, Home button, the TV's own buttons (Netflix, Prime) and the music access — Settings → System.",
+            "Fire TV: Home opens GlassMyTV again. Amazon's launcher kept the Home button for itself; the setup switches that launcher off, and switches it back on there too.",
+            "Fire TV: the Netflix and Prime buttons can be mapped now — they arrive at GlassMyTV once Amazon's launcher is out of the way.",
+            "Spotify and the other music apps show what is playing again (the music access is part of the one button).",
+            "◀ ▶ to look through · OK for the next page · Back to close.",
+        ), "Settings → System · Remote buttons: Settings → Remote mapping."),
         Page("What's new in GlassMyTV 1.0.1", listOf(
             "Nuvio: connecting no longer stops at HTTP 401 — every build now carries a working app key.",
             "Remote: the Netflix, YouTube, Prime and colour keys can be mapped when the Home button service is on — GlassMyTV takes them before the TV starts their own app.",

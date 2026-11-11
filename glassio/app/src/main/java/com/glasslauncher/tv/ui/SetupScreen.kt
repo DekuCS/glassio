@@ -218,16 +218,24 @@ fun SetupScreen(app: GlassApp, onDone: () -> Unit) {
                             fun tick(k: String, l: String) = if (state[k] == true) "✓ $l" else l
                             val sys = com.glasslauncher.tv.data.SystemSetup
                             Buttons(listOf(
-                                "Set up everything" to { run("Setting up") { listOf(sys.enableHomeKey(app), sys.makeHomeApp(app), sys.makeScreensaver(app), sys.startWithTv(app, st)).all { it } } },
+                                "Set up everything" to {
+                                    busy = "Setting up…"
+                                    scope.launch {
+                                        val d = withContext(Dispatchers.IO) {
+                                            val r = sys.setupAll(app, st)
+                                            st.bootStart = true
+                                            com.glasslauncher.tv.data.LocalShell.run(app, "appops set ${app.packageName} SYSTEM_ALERT_WINDOW allow; true")
+                                            r
+                                        }
+                                        busy = if (d.home && d.keys) "" else if (!sys.developerOn(app)) "Turn on Developer options and USB debugging first (TV access below)"
+                                            else "Allow USB debugging for GlassMyTV when the TV asks (Always allow), then try again"
+                                        refresh()
+                                    }
+                                },
                                 tick("adb", "TV access (ADB)") to {
                                     if (!sys.developerOn(app)) runCatching { app.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
                                         .onFailure { busy = "Open Settings → About and press OK on the build number 7 times, then turn on USB debugging" }
                                     else run("Asking the TV") { true }
-                                },
-                                tick("key", "Home button") to { run("Turning on the Home button service") { sys.enableHomeKey(app) } },
-                                tick("home", "Default home app") to {
-                                    if (state["adb"] == true) run("Making GlassMyTV the home app") { sys.makeHomeApp(app) }
-                                    else if (!sys.askForHomeRole(app)) busy = "This TV has no home-app dialog: use Settings → Apps → Home app, or allow TV access (ADB) below"
                                 },
                                 tick("saver", "Default screensaver") to { run("Making GlassMyTV the screensaver") { sys.makeScreensaver(app) } },
                                 tick("boot", "Start with the TV") to { run("Starting with the TV") { sys.startWithTv(app, st) } },

@@ -165,10 +165,15 @@ private fun MenuDialogView(d: MenuDialog, onDismiss: () -> Unit) {
 private fun KeyCaptureView(d: KeyCaptureDialog, onDismiss: () -> Unit) {
     val fr = remember { FocusRequester() }
     var hint by remember { mutableStateOf(if (com.glasslauncher.tv.HomeKeyService.instance == null)
-        "The Home button service is off, so the TV's own keys (Netflix, YouTube, Prime) never reach this screen: they start their own app instead. Turn it on in Settings → System, then add the button again. Back cancels"
+        "Press the button on the remote you want to use (Back cancels)"
     else "Press the button on the remote you want to use (Back cancels)") }
     // The OK that opened this is still being released: ignored.
     var armed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(5_000)
+        if (com.glasslauncher.tv.HomeKeyService.instance == null)
+            hint = "Nothing arrived. The Home button service is off, so the TV's own keys (Netflix, YouTube, Prime) start their own app instead of coming here: press \"Set up GlassMyTV\" in Settings → System, then try again"
+    }
     Dialog(onDismissRequest = onDismiss) {
         DialogSurface(width = 330, modifier = Modifier.focusRequester(fr).onPreviewKeyEvent { ev ->
             val code = ev.nativeKeyEvent.keyCode

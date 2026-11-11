@@ -11,6 +11,65 @@ import android.content.Intent
 object SystemSetup {
     private fun pkg(ctx: Context) = ctx.packageName
 
+    /** Fire TV's own home screen. It takes the Home key and swallows the Netflix and Prime buttons. */
+    private const val AMAZON_LAUNCHER = "com.amazon.tv.launcher"
+
+    /** What Settings → System's one button did. */
+    class Done(val home: Boolean, val keys: Boolean, val music: Boolean, val amazonOff: Boolean)
+
+    /** This TV runs Fire OS (Amazon), where the Home key and the app buttons are handled by the stock launcher. */
+    fun isFireTv(): Boolean = runCatching {
+        android.os.Build.MANUFACTURER.equals("Amazon", true) || android.os.Build.BRAND.equals("Amazon", true) ||
+            android.os.Build.MODEL.orEmpty().startsWith("AFT", true)
+    }.getOrDefault(false)
+
+    fun installed(ctx: Context, p: String): Boolean = runCatching {
+        ctx.packageManager.getApplicationInfo(p, 0); true
+    }.getOrDefault(false)
+
+    /** The Amazon launcher is switched off (its package disabled). */
+    fun amazonLauncherOff(ctx: Context): Boolean = runCatching {
+        ctx.packageManager.getApplicationEnabledSetting(AMAZON_LAUNCHER) ==
+            android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER
+    }.getOrDefault(false)
+
+    /**
+     * Everything GlassMyTV needs on the TV, in one go: the secure-settings right, the Home button service,
+     * GlassMyTV as the home app, and the music access. On Fire TV, where the stock launcher keeps Home and
+     * the Netflix / Prime buttons to itself, that launcher is switched off when becoming the home app
+     * doesn't take. Blocking.
+     */
+    fun setupAll(ctx: Context, st: Settings): Done {
+        val p = pkg(ctx)
+        // The writes below go through the secure settings: the right comes first.
+        LocalShell.run(ctx, "pm grant $p android.permission.WRITE_SECURE_SETTINGS 2>/dev/null; true")
+        enableHomeKey(ctx)
+        st.interceptHome = true
+        setHomeActivity(ctx)
+        // Fire TV: Amazon's launcher keeps Home, whatever the preferred home app says. Switch it off so the
+        // system falls back to GlassMyTV (and lets the store buttons through to the service).
+        var amazonOff = amazonLauncherOff(ctx)
+        if (!isHomeApp(ctx) && isFireTv() && installed(ctx, AMAZON_LAUNCHER)) {
+            LocalShell.run(ctx, "pm disable-user --user 0 $AMAZON_LAUNCHER; true")
+            amazonOff = amazonLauncherOff(ctx)
+            setHomeActivity(ctx)
+        }
+        if (!isHomeApp(ctx)) LocalShell.run(ctx, "cmd role add-role-holder android.app.role.HOME $p 2>/dev/null; true")
+        val music = NowPlaying.grant(ctx)
+        return Done(isHomeApp(ctx), homeKeyOn(ctx) && st.interceptHome, music, amazonOff)
+    }
+
+    /** Fire TV: turns the Amazon launcher back on (after [setupAll] switched it off). Blocking. */
+    fun restoreAmazonLauncher(ctx: Context): Boolean {
+        LocalShell.run(ctx, "pm enable $AMAZON_LAUNCHER; true")
+        return !amazonLauncherOff(ctx)
+    }
+
+    private fun setHomeActivity(ctx: Context) {
+        val p = pkg(ctx)
+        LocalShell.run(ctx, "cmd package set-home-activity $p/com.glasslauncher.tv.MainActivity >/dev/null 2>&1; true")
+    }
+
     /** GlassMyTV may use the TV's debugging connection (asks "Allow USB debugging?" on the TV the first time). Blocking. */
     fun adb(ctx: Context): Boolean = LocalShell.run(ctx, "echo ok").getOrNull()?.contains("ok") == true
 

@@ -22,8 +22,8 @@ cleanmytv/   Desktop-Begleiter (Electron, React, TypeScript)
 
 | Teil | Sprache | Version | Lizenz |
 |---|---|---|---|
-| `glassio/` | Kotlin / Compose, minSdk 26 | `1.0.1` | GPL-3.0 |
-| `cleanmytv/` | Electron 44 / React 19 / TS | `1.0.1` | MIT |
+| `glassio/` | Kotlin / Compose, minSdk 26 | `1.0.2` | GPL-3.0 |
+| `cleanmytv/` | Electron 44 / React 19 / TS | `1.0.2` | MIT |
 
 Die Versionen stehen in `glassio/app/build.gradle.kts` (`versionName`/`versionCode`) und in
 `cleanmytv/package.json` (`version`). Der Release-Workflow prüft, dass Tag, `package.json` und
@@ -85,12 +85,12 @@ npm run dev         # Electron im Entwicklungsmodus
 
 ## Releases
 
-Ein Tag `v1.0.1` löst `.github/workflows/release.yml` aus:
+Ein Tag `v1.0.2` löst `.github/workflows/release.yml` aus:
 
 1. **apk** — baut das signierte Release-APK auf Ubuntu, mit `GLASSIO_STORE_BASE64`,
    `GLASSIO_STORE_PASSWORD` und `GLASSIO_KEY_PASSWORD` aus den Repository-Secrets.
 2. **test** — Typecheck und Tests des Desktop-Begleiters.
-3. **app** — baut `.exe` (NSIS) und `.dmg`, mit dem APK im Gepäck.
+3. **app** — baut den `.exe`-Installer (NSIS), mit dem APK im Gepäck.
 4. **release** — legt einen **Draft**-Release mit APK, Installern und `SHA256SUMS.txt` an.
 
 Der Launcher liest `releases/latest` von `DekuCS/glassio` und nimmt das **erste** Asset, dessen Name

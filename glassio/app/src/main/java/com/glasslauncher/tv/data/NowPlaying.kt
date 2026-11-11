@@ -54,19 +54,29 @@ object NowPlaying {
 
     private fun listener(ctx: Context) = ComponentName(ctx, MusicListener::class.java)
 
+    /** The listener Android binds once the access is there: the media sessions arrive from then on. */
+    @Volatile var listening = false
+
     fun hasAccess(ctx: Context): Boolean = runCatching {
         android.provider.Settings.Secure.getString(ctx.contentResolver, "enabled_notification_listeners").orEmpty().contains(listener(ctx).flattenToString())
     }.getOrDefault(false)
 
-    /** Blocking. Lets GlassMyTV read the media sessions (its notification listener on). */
+    /**
+     * Blocking. Lets GlassMyTV read the media sessions (its notification listener on): `cmd notification`
+     * where the TV has it, then the secure setting directly (needs WRITE_SECURE_SETTINGS, given over ADB).
+     * Some TV builds keep a listener switched off until it is bound, so the check comes last.
+     */
     fun grant(ctx: Context): Boolean {
         val comp = listener(ctx).flattenToString()
         if (hasAccess(ctx)) return true
-        LocalShell.run(ctx, "cmd notification allow_listener $comp")
+        LocalShell.run(ctx, "pm grant ${ctx.packageName} android.permission.WRITE_SECURE_SETTINGS 2>/dev/null; true")
+        LocalShell.run(ctx, "cmd notification allow_listener $comp 2>/dev/null; true")
         if (!hasAccess(ctx)) runCatching {
             val cur = android.provider.Settings.Secure.getString(ctx.contentResolver, "enabled_notification_listeners").orEmpty()
             android.provider.Settings.Secure.putString(ctx.contentResolver, "enabled_notification_listeners", if (cur.isBlank()) comp else "$cur:$comp")
         }
+        if (!hasAccess(ctx)) LocalShell.run(ctx, "cmd notification allow_listener $comp 2>/dev/null; true")
+        if (hasAccess(ctx)) start(ctx)
         return hasAccess(ctx)
     }
 
@@ -206,5 +216,6 @@ object NowPlaying {
 
 /** GlassMyTV's notification listener: only there so Android lets it read the media sessions (no notifications are used). */
 class MusicListener : android.service.notification.NotificationListenerService() {
-    override fun onListenerConnected() { super.onListenerConnected(); NowPlaying.start(this) }
+    override fun onListenerConnected() { super.onListenerConnected(); NowPlaying.listening = true; NowPlaying.start(this) }
+    override fun onListenerDisconnected() { super.onListenerDisconnected(); NowPlaying.listening = false }
 }
