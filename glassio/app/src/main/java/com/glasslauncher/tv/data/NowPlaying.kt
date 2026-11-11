@@ -57,6 +57,13 @@ object NowPlaying {
     /** The listener Android binds once the access is there: the media sessions arrive from then on. */
     @Volatile var listening = false
 
+    /** What the session side looks like right now, for the one-line log the dump_music hook prints. */
+    fun debugLine(ctx: Context): String {
+        val got = runCatching { msm?.getActiveSessions(listener(ctx))?.map { "${it.packageName}:${it.playbackState?.state}" } }
+        return "listening=$listening access=${hasAccess(ctx)} started=$started manager=${msm != null} " +
+            "sessions=${got.getOrElse { "error ${it.javaClass.simpleName} ${it.message}" }}"
+    }
+
     fun hasAccess(ctx: Context): Boolean = runCatching {
         android.provider.Settings.Secure.getString(ctx.contentResolver, "enabled_notification_listeners").orEmpty().contains(listener(ctx).flattenToString())
     }.getOrDefault(false)

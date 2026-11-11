@@ -158,6 +158,8 @@ class HomeKeyService : AccessibilityService() {
         if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         // The window on screen, for Nuvio's playback sent to Home Assistant.
         event.packageName?.toString()?.let { p ->
+            // Which app was last in front: the music page shows itself only after its own app, when asked to.
+            com.glasslauncher.tv.ui.MusicUi.noteForeground(p)
             com.glasslauncher.tv.data.NuvioWatch.onWindow(p, event.className?.toString().orEmpty())
             // Recent apps without ADB: the app now on screen.
             (application as? GlassApp)?.let { a -> com.glasslauncher.tv.data.AppHistory.onFront(this, p) { k -> a.apps.apps.value.any { it.pkg == k } } }

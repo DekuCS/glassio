@@ -44,6 +44,17 @@ object DevHooks {
             app.apps.ordered(includeHidden = true).firstOrNull { it.pkg == pkg }?.let { e -> com.glasslauncher.tv.ui.AppLock.open(app, a, e) }
         }
         i.getIntExtra("open_settings", -1).takeIf { it >= 0 }?.let { app.requestSettings.intValue = it; app.requestSettingsRev.intValue++ }
+        // What the music page would do right now (read-only): the song, the app last in front, and the switches.
+        if (i.getBooleanExtra("dump_music", false)) {
+            val t = com.glasslauncher.tv.data.NowPlaying.track.value
+            val fg = com.glasslauncher.tv.ui.MusicUi.lastForeground.value
+            val st = app.settings
+            com.glasslauncher.tv.data.Glog.i("Music state: track=" + (t?.let { "${it.pkg} / ${it.title} / ${it.artist} playing=${it.playing}" } ?: "none") +
+                " front=$fg follow=${st.musicFollowApp} musicOn=${st.musicOn} musicMode=${st.musicMode}" +
+                " allowed=${com.glasslauncher.tv.ui.MusicUi.stageAllowed(st)} wasFront=${com.glasslauncher.tv.ui.MusicUi.songAppWasFront(t)}" +
+                " stage=${com.glasslauncher.tv.ui.MusicUi.stageOn(st, t)}")
+            com.glasslauncher.tv.data.Glog.i("Music session: " + com.glasslauncher.tv.data.NowPlaying.debugLine(app))
+        }
         // The silent update path, with this same APK (GlassMyTV restarts): --ez self_install true.
         if (i.getBooleanExtra("self_install", false)) Thread {
             val f = java.io.File(app.cacheDir, "self.apk")
@@ -99,6 +110,12 @@ object DevHooks {
         }
         if (i.getBooleanExtra("start_saver", false)) a.startActivity(Intent(a, com.glasslauncher.tv.saver.ScreensaverActivity::class.java))
 
+        // Read-only: everything saved in Settings, printed to the log (it shapes the next build's defaults, so it
+        // needs no dev key). Long values are cut; the hidden apps have their own hook.
+        if (i.getBooleanExtra("dump_prefs", false)) app.settings.dumpAll().toSortedMap().forEach { (k, v) ->
+            android.util.Log.i("GlassPrefs", "$k=${v.toString().take(120)}")
+        }
+        if (i.getBooleanExtra("dump_hidden", false)) android.util.Log.i("GlassPrefs", "hiddenApps(all)=" + app.settings.hiddenApps.joinToString(","))
         if (!allowed(app, i)) return
         val st = app.settings
         // ---- Settings
@@ -148,8 +165,5 @@ object DevHooks {
             h.postDelayed({ send() }, 300)
         }
         if (i.hasExtra("page_glass")) com.glasslauncher.tv.ui.PageGlass.on.value = i.getBooleanExtra("page_glass", true)
-        if (i.getBooleanExtra("dump_prefs", false)) st.dumpAll().toSortedMap().forEach { (k, v) ->
-            android.util.Log.i("GlassPrefs", "$k=${v.toString().take(120)}")
-        }
     }
 }

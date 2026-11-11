@@ -22,8 +22,8 @@ cleanmytv/   Desktop-Begleiter (Electron, React, TypeScript)
 
 | Teil | Sprache | Version | Lizenz |
 |---|---|---|---|
-| `glassio/` | Kotlin / Compose, minSdk 26 | `1.0.2` | GPL-3.0 |
-| `cleanmytv/` | Electron 44 / React 19 / TS | `1.0.2` | MIT |
+| `glassio/` | Kotlin / Compose, minSdk 26 | `1.0.4` | GPL-3.0 |
+| `cleanmytv/` | Electron 44 / React 19 / TS | `1.0.4` | MIT |
 
 Die Versionen stehen in `glassio/app/build.gradle.kts` (`versionName`/`versionCode`) und in
 `cleanmytv/package.json` (`version`). Der Release-Workflow prüft, dass Tag, `package.json` und
@@ -85,7 +85,7 @@ npm run dev         # Electron im Entwicklungsmodus
 
 ## Releases
 
-Ein Tag `v1.0.2` löst `.github/workflows/release.yml` aus:
+Ein Tag `v1.0.4` löst `.github/workflows/release.yml` aus:
 
 1. **apk** — baut das signierte Release-APK auf Ubuntu, mit `GLASSIO_STORE_BASE64`,
    `GLASSIO_STORE_PASSWORD` und `GLASSIO_KEY_PASSWORD` aus den Repository-Secrets.

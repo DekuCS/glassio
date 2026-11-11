@@ -22,8 +22,8 @@ android {
         minSdk = 26
         targetSdk = 35
         // Own release line, separate from upstream's 3.x: this fork starts at 1.0.0.
-        versionCode = 4
-        versionName = "1.0.3"
+        versionCode = 5
+        versionName = "1.0.4"
         // Two languages ship: English (source) and German (complete). Everything else is stripped.
         androidResources { localeFilters += listOf("en", "de") }
         // TV boxes are ARM: the depth model's native library only for those (keeps the download small).

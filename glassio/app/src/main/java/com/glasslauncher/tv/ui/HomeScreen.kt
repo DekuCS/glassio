@@ -757,7 +757,7 @@ fun HomeScreen(app: GlassApp, screen: Screen, onScreen: (Screen) -> Unit) {
                 // A trailer in its own window: over the dock and the dots too (only the pop-up menu is above it).
                 if (settings.trailerSize == "popup") TrailerLayer(app, s)
                 // The music island at the top of the home screen (Settings → Music), when Music mode isn't showing.
-                if (settings.musicOn && settings.islandHome && (!settings.musicMode || settings.musicOnDemand || !MusicUi.stageAllowed(settings)) && !MusicUi.forced.value) MusicIsland(app, s)
+                if (settings.musicOn && settings.islandHome && (!settings.musicMode || !MusicUi.stageAllowed(settings)) && !MusicUi.forced.value) MusicIsland(app, s)
             }
             // The folder fades out over the home screen instead of vanishing: the dock's glass is drawn again under it
             // first (it showed black for a couple of frames as the folder closed).

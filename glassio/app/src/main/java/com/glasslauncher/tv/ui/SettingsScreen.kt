@@ -948,28 +948,30 @@ fun SettingsScreen(app: GlassApp, initialCat: Int, onClose: () -> Unit) {
                     tvRev.intValue++
                     if (r.isSuccess) done else "Allow USB debugging for GlassMyTV when the TV asks (Always allow), then try again"
                 }
-                add(Toggle("GlassMyTV is the TV screensaver (ADB)", if (ours) "On: it starts in every app when the TV is idle, not only on the home screen"
+                // Straight into the TV's settings (the setup gave the app that right), the shell only as fallback.
+                fun saver(done: String, fail: String, action: () -> Boolean) = io {
+                    val ok = runCatching { action() }.getOrDefault(false)
+                    tvRev.intValue++
+                    if (ok) done else fail
+                }
+                add(Toggle("GlassMyTV is the TV screensaver", if (ours) "On: it starts in every app when the TV is idle, not only on the home screen"
                     else if (tvEnabled && comp.isNotBlank()) "Now the TV uses ${comp.substringBefore('/')}" else "Off",
                     { ours }, { on ->
-                        // The TV's "undim detector" kept the screen on for 10 minutes after a couple of quick key presses,
-                        // so the screensaver often didn't start at its time: switched off here.
-                        // With the screensaver time at (or past) the TV's sleep time the TV just went to sleep: give it 5 minutes then.
-                        if (on) tv("settings put secure screensaver_components $glassDream && settings put secure screensaver_enabled 1 && settings put secure screensaver_activate_on_sleep 1; " +
-                            "t=\$(settings get system screen_off_timeout); sl=\$(settings get secure sleep_timeout); case \$sl in ''|null|-1|0) sl=1800000;; esac; " +
-                            "if [ \"\$t\" -ge \"\$sl\" ] 2>/dev/null || [ \"\$t\" -ge 1800000 ] 2>/dev/null; then settings put system screen_off_timeout 300000; fi; " +
-                            "device_config put attention_manager_service keep_screen_on_enabled false 2>/dev/null; true",
-                            "GlassMyTV is now the TV screensaver")
-                        // Off: with no screensaver the TV goes to sleep at that idle time, so the screen then stays on
-                        // until the TV's own sleep time (Energy settings, sleep_timeout) instead.
-                        else tv("settings put secure screensaver_enabled 0 && s=\$(settings get secure sleep_timeout) && case \$s in ''|null|-1|0) s=1800000;; esac && settings put system screen_off_timeout \$s",
-                            "TV screensaver off (the TV now sleeps at its own sleep time)")
+                        if (on) saver("GlassMyTV is now the TV screensaver",
+                            "The TV didn't take it: open Settings → System and run the setup once, then try again",
+                        ) { com.glasslauncher.tv.data.SystemSetup.makeScreensaver(ctx) }
+                        else saver("TV screensaver off (the TV now sleeps at its own sleep time)",
+                            "The TV didn't take it: open Settings → System and run the setup once, then try again",
+                        ) { com.glasslauncher.tv.data.SystemSetup.screensaverOff(ctx) }
                     }))
-                add(Adjust("TV screensaver starts after (ADB)", "The TV's own idle time, in any app", {
+                add(Adjust("TV screensaver starts after", "The TV's own idle time, in any app", {
                     when { tvAfter <= 0 -> "Unknown"; tvAfter < 60_000 -> "${tvAfter / 1000} s"; tvAfter >= 3_600_000 -> "${tvAfter / 3_600_000} h"; else -> "${tvAfter / 60_000} min" + (if (tvAfter % 60_000 != 0) " ${tvAfter % 60_000 / 1000} s" else "") }
                 }, { d ->
                     val opts = listOf(20_000, 30_000, 60_000, 120_000, 300_000, 600_000, 900_000)
                     val next = cycle(opts, opts.minByOrNull { kotlin.math.abs(it - tvAfter) } ?: 60_000, if (tvAfter in opts) d else 0)
-                    tv("settings put system screen_off_timeout $next && settings put secure screensaver_activate_on_sleep 1; device_config put attention_manager_service keep_screen_on_enabled false 2>/dev/null; true", "The TV screensaver now starts after " + (if (next < 60_000) "${next / 1000} s" else "${next / 60_000} min"))
+                    saver("The TV screensaver now starts after " + (if (next < 60_000) "${next / 1000} s" else "${next / 60_000} min"),
+                        "The TV didn't take it: open Settings → System and run the setup once, then try again",
+                    ) { com.glasslauncher.tv.data.SystemSetup.screensaverAfter(ctx, next) }
                 }))
                 add(Adjust("Start after (on the home screen)", if (ours) "Not needed while GlassMyTV is the TV screensaver" else "Idle time on the launcher", { st.idleSeconds.let { v -> if (v == 0) "Off" else if (v < 60) "$v s" else "${v / 60} min" } }, {
                     st.idleSeconds = cycle(listOf(0, 10, 30, 60, 120, 180, 300, 600, 900, 1800), st.idleSeconds, it)
@@ -1136,9 +1138,12 @@ fun SettingsScreen(app: GlassApp, initialCat: Int, onClose: () -> Unit) {
                     add(Adjust("  · Buttons", "White or black turn the other way round when selected", {
                         when (st.musicButtons) { "white" -> "White"; "black" -> "Black"; else -> "With the theme" }
                     }, { st.musicButtons = cycle(listOf("theme", "white", "black"), st.musicButtons, it) }))
-                    add(Toggle("  · Only when you open it",
-                        "The carousel keeps its place while Spotify or another music app plays; the player comes up when you open it (the dock's Music icon, or ▶ in the menu)",
-                        { st.musicOnDemand }, { st.musicOnDemand = it }))
+                    add(Toggle("  · Only while the music app was open",
+                        "On: the player takes the carousel only when the app that plays (Spotify, YouTube Music…) was the last one in front — after Netflix or anything else the carousel stays as usual. Off: the player takes it whenever a song plays",
+                        { st.musicFollowApp }, { st.musicFollowApp = it }))
+                    add(Toggle("  · Lyrics beside the player",
+                        "The song's words from lrclib.net, the line being sung lit up (only the title, artist, album and length are asked for). Without words the player keeps the whole width",
+                        { st.musicLyrics }, { st.musicLyrics = it }))
                     add(Note("Island on the screensaver"))
                     add(Toggle("Island", "While music plays, a small island at the top of the screensaver (like the iPhone's). ▲ opens it with its buttons, ▼ closes it", { st.musicIsland }, { st.musicIsland = it }))
                     add(Toggle("  · Island on the home screen too", "When Music mode is off", { st.islandHome }, { st.islandHome = it }))
