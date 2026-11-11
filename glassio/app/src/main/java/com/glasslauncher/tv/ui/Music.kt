@@ -41,6 +41,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -276,6 +277,18 @@ private fun progressOf(t: NowPlaying.Track): Float {
         while (true) { value = if (t.duration > 0) (t.positionNow().toFloat() / t.duration).coerceIn(0f, 1f) else 0f; delay(500) }
     }
     return v
+}
+
+/**
+ * The song's position a few times a second, so the bar and the times move smoothly between the app's far-apart
+ * reports. Paused, [NowPlaying.Track.positionNow] stands still and so does this — the words hold with the song.
+ */
+@Composable
+private fun positionOf(t: NowPlaying.Track): Long {
+    val now by produceState(t.positionNow(), t) {
+        while (true) { value = t.positionNow(); delay(350) }
+    }
+    return now
 }
 
 /** A few bars rising and falling while the music plays (in the artwork's colour or white). */
@@ -518,7 +531,7 @@ fun openMusicApp(ctx: android.content.Context, pkg: String) {
  * The player and the words are each sized and placed from the settings.
  */
 @Composable
-fun MusicStage(app: GlassApp, s: Float, heroFocus: FocusRequester, firstTile: FocusRequester, dockInset: Float = 0f) {
+fun MusicStage(app: GlassApp, s: Float, heroFocus: FocusRequester, firstTile: FocusRequester, dockInset: Float = 0f, dockSide: Float = 0f) {
     val st = app.settings
     val tr = MusicUi.heldTrack() ?: return
     val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -561,20 +574,27 @@ fun MusicStage(app: GlassApp, s: Float, heroFocus: FocusRequester, firstTile: Fo
         val kl = k * st.musicLyricsScale
         val playerShift = Modifier.offset(x = (st.musicPlayerX * 24 * s).dp, y = (st.musicPlayerY * 18 * s).dp)
         val lyricsShift = Modifier.offset(x = (st.musicLyricsX * 24 * s).dp, y = (st.musicLyricsY * 18 * s).dp)
+        // The page keeps the dock's own room free and sits on it: the same side margin as the dock, and a small gap
+        // over its glass, so the pill of the player stops right above the dock instead of floating in the middle.
+        val side = if (dockSide > 0f) dockSide else 24 * s
+        val overDock = dockInset + 10 * s
         if (!withLyrics) {
-            // No words: the player in the middle.
-            Box(Modifier.fillMaxSize().padding(bottom = dockInset.dp)) {
+            // No words: the player in the middle of the page, standing on the dock.
+            Box(Modifier.fillMaxSize().padding(bottom = overDock.dp).padding(horizontal = (side + 6 * s).dp)) {
                 PlayerColumn(app, tr, artImg, accent, kp, s, heroFocus, firstTile, focusTag,
-                    Modifier.align(Alignment.Center).then(playerShift))
+                    Modifier.align(Alignment.BottomCenter).then(playerShift))
             }
         } else {
-            // The player on the left, the words on the right (the page is a two-page spread, the cover a little
-            // wider than the words, as a lyric sheet sits beside an album). The dock's room stays free under both.
-            Row(Modifier.fillMaxSize().padding(bottom = dockInset.dp).padding(horizontal = (56 * s).dp),
-                horizontalArrangement = Arrangement.spacedBy((28 * k).dp), verticalAlignment = Alignment.CenterVertically) {
-                PlayerColumn(app, tr, artImg, accent, kp, s, heroFocus, firstTile, focusTag,
-                    Modifier.weight(1.06f).then(playerShift))
-                LyricsPanel(lyrNow!!, tr, accent, kl, Modifier.weight(0.94f).then(lyricsShift))
+            // The player on the left, the words on the right (a two-page spread: the record, and its lyric sheet
+            // beside it). Both halves stand on the dock, the words centred beside the cover.
+            Box(Modifier.fillMaxSize().padding(bottom = overDock.dp).padding(horizontal = (side + 6 * s).dp)) {
+                Row(Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                    horizontalArrangement = Arrangement.spacedBy((36 * k).dp), verticalAlignment = Alignment.Bottom) {
+                    PlayerColumn(app, tr, artImg, accent, kp, s, heroFocus, firstTile, focusTag,
+                        Modifier.weight(1.06f).then(playerShift))
+                    LyricsPanel(lyrNow!!, tr, accent, kl, st.dockStyle, st.musicLyricsPanel,
+                        Modifier.weight(0.94f).then(lyricsShift))
+                }
             }
         }
     }
@@ -590,13 +610,13 @@ private fun PlayerColumn(
     val st = app.settings
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    BoxWithConstraints(modifier.then(focusTag), contentAlignment = Alignment.Center) {
+    BoxWithConstraints(modifier.then(focusTag), contentAlignment = Alignment.BottomCenter) {
         // The page only has the room above the dock. The player is laid out from one factor (its height is
         // PLAYER_UNITS of it), so it is pulled back just enough to fit that room — with the place it was moved to
         // counted in, so a player pushed up never grows out of the top — and never past the size asked for.
         val moved = (st.musicPlayerY * 18 * s)
         val room = maxHeight.value - 2f * kotlin.math.abs(moved)
-        val fit = if (room > 0f) (room * 0.90f / (PLAYER_UNITS * k)).coerceIn(0.45f, 1f) else 1f
+        val fit = if (room > 0f) (room * 0.93f / (PLAYER_UNITS * k)).coerceIn(0.45f, 1f) else 1f
         val k = k * fit
         // The cover sets the width of everything under it (the bar, the buttons sit centred on it, the names on top).
         val cover = (300 * k).dp
@@ -637,10 +657,12 @@ private fun PlayerColumn(
             }
             Spacer(Modifier.height((12 * k).dp))
             // The song's time: played so far, the bar, the length, and a light knob where it stands — bar and knob
-            // in one canvas so they line up to the pixel at any size.
-            val p = progressOf(tr)
+            // in one canvas so they line up to the pixel at any size. The time and the bar share one clock, so the
+            // numbers and the bar never disagree; paused, both stand still.
+            val at = positionOf(tr)
+            val p = if (tr.duration > 0) (at.toFloat() / tr.duration).coerceIn(0f, 1f) else 0f
             Row(Modifier.width(cover), verticalAlignment = Alignment.CenterVertically) {
-                Text(clock(tr.positionNow()), color = Color.White.copy(alpha = 0.56f), fontSize = (10 * k).sp,
+                Text(clock(at), color = Color.White.copy(alpha = 0.56f), fontSize = (10 * k).sp,
                     modifier = Modifier.width((38 * k).dp), textAlign = TextAlign.Start)
                 Canvas(Modifier.weight(1f).padding(horizontal = (5 * k).dp).height((16 * k).dp)) {
                     val cy = size.height / 2f
@@ -698,24 +720,29 @@ private const val PLAYER_UNITS = 508f
  * It moves like Apple Music on TV rather than snapping: the whole block slides up by one slot as the song goes on,
  * the line being sung grows and brightens over a third of a second with a short bar in the song's colour under it,
  * the one just sung dims out, and after a jump (an instrumental or a new part of the song) the block fades back in
- * together instead of teleporting. The top and bottom lines melt into the page, so the block has no hard edge.
+ * together instead of teleporting. The first and last lines melt out, so the block has no hard edge. On its own
+ * sheet of the dock's glass it reads as paper instead of words on a photograph.
+ *
+ * The song's position comes from [positionOf], which stands still while the song is paused: the words hold with it
+ * instead of running on to the end of the song (the old ticker kept the first track it ever saw and went on counting).
  */
 @Composable
-private fun LyricsPanel(page: com.glasslauncher.tv.data.Lyrics.Page, tr: NowPlaying.Track, accent: Color, k: Float, modifier: Modifier = Modifier) {
+private fun LyricsPanel(
+    page: com.glasslauncher.tv.data.Lyrics.Page, tr: NowPlaying.Track, accent: Color, k: Float,
+    dockStyle: String, panel: Boolean, modifier: Modifier = Modifier,
+) {
     val lines = page.lines
     if (lines.isEmpty()) return
     // Where the song is now, a few times a second (the app's updates are far apart).
-    val pos by produceState(tr.positionNow(), tr.title, tr.artist) {
-        while (true) { value = tr.positionNow(); delay(350) }
-    }
+    val pos = positionOf(tr)
     val idx = if (page.synced) lines.indexOfLast { it.at <= pos }.coerceAtLeast(0) else -1
     val visible = 9
-    val slot = 42f * k
+    val slot = 40f * k
     val from = if (page.synced) (idx - 3).coerceIn(0, (lines.size - visible).coerceAtLeast(0)) else 0
     val shown = if (page.synced) lines.subList(from, (from + visible).coerceAtMost(lines.size)) else lines.take(visible)
 
     // The block's own slide: the slots stay put, the words inside move up one place (cheaper than animating the
-    // layout, and it reads as one movement rather than eight).
+    // layout, and it reads as one movement rather than nine).
     val fromNow by animateFloatAsState(from.toFloat(), tween(420, easing = androidx.compose.animation.core.FastOutSlowInEasing), label = "lyrFrom")
     // A jump of several lines (a break in the song): the block fades back in from a little above.
     val lift = remember { androidx.compose.animation.core.Animatable(0f) }
@@ -729,7 +756,11 @@ private fun LyricsPanel(page: com.glasslauncher.tv.data.Lyrics.Page, tr: NowPlay
         }
     }
     val density = androidx.compose.ui.platform.LocalDensity.current.density
-    Box(modifier, contentAlignment = Alignment.Center) {
+    val padX = (30 * k).dp
+    val padY = (20 * k).dp
+
+    // The lines themselves: one window of slots, slid by the block's own offset.
+    val sheet: @Composable () -> Unit = {
         Box(Modifier.fillMaxWidth().height((slot * visible).dp).graphicsLayer { alpha = 1f - lift.value * 0.55f }) {
             Column(
                 Modifier.fillMaxSize().graphicsLayer { translationY = (from - fromNow) * slot * density },
@@ -742,20 +773,23 @@ private fun LyricsPanel(page: com.glasslauncher.tv.data.Lyrics.Page, tr: NowPlay
                     // Keyed by the line, not by its slot, so a line keeps its own animation as the block moves on.
                     key(at) {
                         val on by animateFloatAsState(if (now) 1f else 0f, tween(360, easing = androidx.compose.animation.core.FastOutSlowInEasing), label = "lyrOn")
+                        // A line that is only a mark (♪ for an instrumental, a dash for a pause) is not a word: it
+                        // stays small and quiet, and it gets no bar of its own.
+                        val mark = remember(line.text) { line.text.none { it.isLetterOrDigit() } }
                         // Further from the line being sung, quieter — the eye lands on the middle of the page.
                         val further = if (page.synced) kotlin.math.abs(at - idx) else 0
-                        val base = if (past) 0.26f else (0.66f - 0.05f * (further - 1)).coerceAtLeast(0.30f)
+                        val base = if (past) 0.26f else (0.68f - 0.055f * (further - 1)).coerceAtLeast(0.30f)
                         // The first and last lines of the window melt out instead of being cut by its edge.
                         val edge = ((minOf(i, shown.size - 1 - i) + 1).toFloat() / 3f).coerceAtMost(1f)
-                        val alpha = (if (page.synced) base + on * (1f - base) else 0.82f) * edge
+                        val alpha = (if (page.synced) base + on * (1f - base) else 0.82f) * edge * (if (mark) 0.6f else 1f)
                         Box(Modifier.fillMaxWidth().height(slot.dp), contentAlignment = Alignment.Center) {
                             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     com.glasslauncher.tv.data.I18n.tr(line.text),
                                     color = Color.White.copy(alpha = alpha),
-                                    fontSize = ((15f + 5f * on) * k).sp,
+                                    fontSize = ((if (mark) 12f else 15f) * k + (if (mark) 1f else 5f) * k * on).sp,
                                     lineHeight = ((16f + 4f * on) * k).sp,
-                                    fontWeight = if (now) FontWeight.SemiBold else FontWeight.Normal,
+                                    fontWeight = if (now && !mark) FontWeight.SemiBold else FontWeight.Normal,
                                     letterSpacing = (0.2f * k * on).sp,
                                     textAlign = TextAlign.Center,
                                     maxLines = 2, overflow = TextOverflow.Ellipsis,
@@ -763,7 +797,7 @@ private fun LyricsPanel(page: com.glasslauncher.tv.data.Lyrics.Page, tr: NowPlay
                                 )
                                 // The line being sung: a short bar in the artwork's colour under it, growing out
                                 // from the middle as the line lights up.
-                                if (on > 0.01f) {
+                                if (on > 0.01f && !mark) {
                                     Spacer(Modifier.height((4 * k).dp))
                                     Box(Modifier.fillMaxWidth(on * 0.17f).height((2.5f * k).dp)
                                         .clip(RoundedCornerShape(50)).background(accent.copy(alpha = 0.85f * on)))
@@ -773,6 +807,23 @@ private fun LyricsPanel(page: com.glasslauncher.tv.data.Lyrics.Page, tr: NowPlay
                     }
                 }
             }
+        }
+    }
+
+    Box(modifier, contentAlignment = Alignment.BottomCenter) {
+        if (panel) {
+            // The lyric sheet on the dock's own glass: the same pane the home screen uses, so the words sit on
+            // paper that belongs to the page instead of floating on the album's colours.
+            GlassPanel(
+                Modifier.fillMaxWidth(), radius = (26 * k).dp, style = dockStyle,
+                darken = 0.18f, refract = true, cache = true,
+            ) {
+                Box(Modifier.fillMaxWidth().padding(horizontal = padX, vertical = padY), contentAlignment = Alignment.Center) {
+                    sheet()
+                }
+            }
+        } else {
+            Box(Modifier.fillMaxWidth().padding(horizontal = padX), contentAlignment = Alignment.Center) { sheet() }
         }
     }
 }

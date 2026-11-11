@@ -41,11 +41,17 @@ import com.glasslauncher.tv.GlassApp
  */
 object WhatsNew {
     /** Bumped when the tour has new pages: everyone who updates sees it once. */
-    const val ID = 63
+    const val ID = 64
 
     class Page(val title: String, val points: List<String>, val where: String)
 
     val PAGES = listOf(
+        Page("What's new in GlassMyTV 1.0.7", listOf(
+            "The words hold with the song now: paused, the lyrics stay where they are and the bar stops with them. They used to keep the first track they ever saw and run on to the end of the song.",
+            "The player stands on the dock and keeps its width: the same side margin as the dock, its small app pill just above the glass, and it never grows past the room above the dock — whatever size and place you chose. The time and the bar now share one clock, so they never disagree and the bar moves smoothly between the app's reports.",
+            "The lyrics have their own sheet of the dock's glass, so they read as paper instead of straight over the album's colours. A line that is only a mark (the ♪ of an instrumental) stays small and quiet. Music · Lyrics · \"Sheet behind the words\" turns the pane off.",
+            "◀ ▶ to look through · OK for the next page · Back to close.",
+        ), "Music: Settings → Music — Player for the size and the place of the whole player, Lyrics for the size, the place and the sheet behind the words."),
         Page("What's new in GlassMyTV 1.0.6", listOf(
             "The player has the layout of a record sleeve now: the song's name and the artist sit above the cover, the cover is large and round-cornered on the left, the progress bar with both times runs under it and the five buttons sit under that.",
             "The cover breathes its own colour faintly behind it, the bar has a light knob where the song stands, and the player makes itself just small enough to fit above the dock — it never runs under it, whatever size and place you chose.",

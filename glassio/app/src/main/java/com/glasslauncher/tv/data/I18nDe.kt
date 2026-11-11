@@ -697,6 +697,8 @@ object I18nDe {
         "Lyrics" to "Liedtexte",
         "0 stays where the words sit now" to "0 lässt die Worte, wo sie jetzt stehen",
         "  · Lyrics beside the player" to "  · Liedtexte neben dem Player",
+        "  · Sheet behind the words" to "  · Blatt hinter den Worten",
+        "The words on their own pane of the dock's glass, like the dock itself, instead of straight over the album's colours" to "Die Worte auf einer eigenen Scheibe aus dem Glas des Docks, wie das Dock selbst, statt direkt über den Farben des Albums",
         "The song's words from lrclib.net, the line being sung lit up (only the title, artist, album and length are asked for). Without words the player keeps the whole width" to "Die Worte des Songs von lrclib.net, die gerade gesungene Zeile hervorgehoben (gefragt werden nur Titel, Interpret, Album und Länge). Ohne Worte behält der Player die ganze Breite",
         "The TV didn't take it: allow USB debugging for GlassMyTV (Always allow) or press the one button in Settings → System" to "Der Fernseher hat es nicht angenommen: erlaube GlassMyTV das USB-Debugging (Immer erlauben) oder drücke den einen Knopf unter Einstellungen → System",
         "What's new in GlassMyTV 1.0.4" to "Neu in GlassMyTV 1.0.4",
@@ -763,5 +765,10 @@ object I18nDe {
         "With the theme" to "Mit dem Theme",
         "TV screensaver starts after" to "TV-Bildschirmschoner startet nach",
         "◀ ▶ to look through · OK for the next page · Back to close." to "◀ ▶ zum Durchblättern · OK für die nächste Seite · Zurück zum Schließen.",
+        "What's new in GlassMyTV 1.0.7" to "Neu in GlassMyTV 1.0.7",
+        "The words hold with the song now: paused, the lyrics stay where they are and the bar stops with them. They used to keep the first track they ever saw and run on to the end of the song." to "Die Worte halten jetzt mit dem Song: pausiert bleiben die Liedtexte stehen und der Balken hält mit ihnen an. Vorher behielten sie den ersten Song, den sie je gesehen haben, und liefen bis zum Ende weiter.",
+        "The player stands on the dock and keeps its width: the same side margin as the dock, its small app pill just above the glass, and it never grows past the room above the dock — whatever size and place you chose. The time and the bar now share one clock, so they never disagree and the bar moves smoothly between the app's reports." to "Der Player steht auf dem Dock und hält dessen Breite: derselbe Seitenrand wie das Dock, die kleine App-Pille direkt über dem Glas, und er wird nie höher als der Platz über dem Dock — egal welche Größe und welchen Platz du eingestellt hast. Zeit und Balken teilen sich jetzt eine Uhr, weichen also nie voneinander ab, und der Balken läuft zwischen den Meldungen der App flüssig weiter.",
+        "The lyrics have their own sheet of the dock's glass, so they read as paper instead of straight over the album's colours. A line that is only a mark (the ♪ of an instrumental) stays small and quiet. Music · Lyrics · \"Sheet behind the words\" turns the pane off." to "Die Liedtexte haben jetzt ein eigenes Blatt aus dem Glas des Docks und lesen sich wie Papier statt direkt über den Farben des Albums. Eine Zeile, die nur ein Zeichen ist (das ♪ eines Instrumentals), bleibt klein und leise. Musik · Liedtexte · „Blatt hinter den Worten“ schaltet die Scheibe ab.",
+        "Music: Settings → Music — Player for the size and the place of the whole player, Lyrics for the size, the place and the sheet behind the words." to "Musik: Einstellungen → Musik — Player für Größe und Platz des ganzen Players, Liedtexte für Größe, Platz und das Blatt hinter den Worten.",
     )
 }

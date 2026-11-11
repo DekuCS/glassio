@@ -1152,6 +1152,9 @@ fun SettingsScreen(app: GlassApp, initialCat: Int, onClose: () -> Unit) {
                         "The song's words from lrclib.net, the line being sung lit up (only the title, artist, album and length are asked for). Without words the player keeps the whole width",
                         { st.musicLyrics }, { st.musicLyrics = it }))
                     if (st.musicLyrics) {
+                        add(Toggle("  · Sheet behind the words",
+                            "The words on their own pane of the dock's glass, like the dock itself, instead of straight over the album's colours",
+                            { st.musicLyricsPanel }, { st.musicLyricsPanel = it }))
                         add(Adjust("  · Size", "", { pct(st.musicLyricsScale) }, { st.musicLyricsScale = tenth(st.musicLyricsScale, it) }))
                         add(Adjust("  · Across", "0 stays where the words sit now", { pos(st.musicLyricsX) }, { st.musicLyricsX = st.musicLyricsX + it }))
                         add(Adjust("  · Up / down", "", { pos(st.musicLyricsY) }, { st.musicLyricsY = st.musicLyricsY + it }))

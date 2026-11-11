@@ -225,6 +225,8 @@ class Settings(private val ctx: Context) {
     var musicLyricsScale: Float get() = f("musicLyricsScale", 1f); set(v) = putF("musicLyricsScale", v.coerceIn(0.6f, 1.6f))
     var musicLyricsX: Int get() = i("musicLyricsX", 0); set(v) = putI("musicLyricsX", v.coerceIn(-16, 16))
     var musicLyricsY: Int get() = i("musicLyricsY", 0); set(v) = putI("musicLyricsY", v.coerceIn(-10, 10))
+    /** The words on their own sheet of the dock's glass, instead of straight over the album's colours. */
+    var musicLyricsPanel: Boolean get() = b("musicLyricsPanel", true); set(v) = putB("musicLyricsPanel", v)
     /** theme | glass | white | black: the player's buttons (the other way round when selected). */
     var musicButtons: String get() = s("musicButtons", "black"); set(v) = putS("musicButtons", v)
     /** The island on the screensaver while music plays. */
