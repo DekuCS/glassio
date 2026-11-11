@@ -208,14 +208,24 @@ class Settings(private val ctx: Context) {
     /** Music mode: while a song plays, the home screen's background becomes the player (whatever background you chose). */
     var musicMode: Boolean get() = b("musicMode", true); set(v) = putB("musicMode", v)
     /**
-     * The player in the carousel only while the music app was the last one open: the app that plays (Spotify …)
-     * was in front when you came back to the home screen. Otherwise the carousel stays as usual, with no player.
+     * The player in the carousel only while the selection sits on the tile of the app that plays (the Spotify tile
+     * selected shows the player, the Nuvio tile the ordinary home screen). Off: the player takes it whenever a song
+     * plays.
      */
     var musicFollowApp: Boolean get() = b("musicFollowApp", true); set(v) = putB("musicFollowApp", v)
     /** The song's words beside the player, when the music app's song has them (lrclib.net). */
     var musicLyrics: Boolean get() = b("musicLyrics", true); set(v) = putB("musicLyrics", v)
     var musicStageScale: Float get() = f("musicStageScale", 0.7f); set(v) = putF("musicStageScale", v.coerceIn(0.7f, 1.4f))
-    /** theme | white | black: the player's buttons (the other way round when selected). */
+    /** The player's own size on the music page, on top of the page's size (0.6 – 1.6). */
+    var musicPlayerScale: Float get() = f("musicPlayerScale", 1f); set(v) = putF("musicPlayerScale", v.coerceIn(0.6f, 1.6f))
+    /** The player moved off the middle, in steps of 24 dp across and 18 dp up/down on a 1080p screen. */
+    var musicPlayerX: Int get() = i("musicPlayerX", 0); set(v) = putI("musicPlayerX", v.coerceIn(-16, 16))
+    var musicPlayerY: Int get() = i("musicPlayerY", 0); set(v) = putI("musicPlayerY", v.coerceIn(-10, 10))
+    /** The words' own size and place, the same way (0.6 – 1.6). */
+    var musicLyricsScale: Float get() = f("musicLyricsScale", 1f); set(v) = putF("musicLyricsScale", v.coerceIn(0.6f, 1.6f))
+    var musicLyricsX: Int get() = i("musicLyricsX", 0); set(v) = putI("musicLyricsX", v.coerceIn(-16, 16))
+    var musicLyricsY: Int get() = i("musicLyricsY", 0); set(v) = putI("musicLyricsY", v.coerceIn(-10, 10))
+    /** theme | glass | white | black: the player's buttons (the other way round when selected). */
     var musicButtons: String get() = s("musicButtons", "black"); set(v) = putS("musicButtons", v)
     /** The island on the screensaver while music plays. */
     var musicIsland: Boolean get() = b("musicIsland", true); set(v) = putB("musicIsland", v)

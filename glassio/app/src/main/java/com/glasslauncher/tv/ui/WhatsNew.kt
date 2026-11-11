@@ -41,11 +41,19 @@ import com.glasslauncher.tv.GlassApp
  */
 object WhatsNew {
     /** Bumped when the tour has new pages: everyone who updates sees it once. */
-    const val ID = 61
+    const val ID = 62
 
     class Page(val title: String, val points: List<String>, val where: String)
 
     val PAGES = listOf(
+        Page("What's new in GlassMyTV 1.0.5", listOf(
+            "The player comes up while the selection sits on the tile of the app that plays: the Spotify tile shows the player, any other tile (Nuvio, Netflix…) the ordinary home screen. Music · \"Only while the music app is selected\".",
+            "The player's page is yours: its size, and where it sits — the artwork with its buttons and the lyrics each have their own size and their own place. Settings → Music · Player and Lyrics.",
+            "Frosted glass for the player's buttons, like the dock: Settings → Music · Buttons.",
+            "The lyrics move with the song instead of snapping: the block slides up a line, the line being sung grows and brightens, and after a break in the song the words come back in together.",
+            "The music apps button at the far right of the player is gone; the five that stayed sit in the middle.",
+            "◀ ▶ to look through · OK for the next page · Back to close.",
+        ), "Music: Settings → Music. The player comes up on the music app's tile — the lyrics, the size and the place are all there."),
         Page("What's new in GlassMyTV 1.0.4", listOf(
             "The player shows only when you want it: Music · \"Only while the music app was open\". After Netflix or anything else the carousel stays a carousel; coming back from Spotify it becomes the player.",
             "The lyrics are beside the player: artwork and buttons on the left, the line being sung lit up on the right (lrclib.net — only title, artist, album and length are sent). Music · \"Lyrics beside the player\" turns it off.",

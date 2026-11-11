@@ -1,7 +1,7 @@
 {
   "name": "glassmytv",
   "productName": "GlassMyTV",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Desktop companion for GlassMyTV: debloat an Android TV and install the GlassMyTV launcher, with nothing else to install.",
   "license": "GPL-3.0-only",
   "author": "DekuCS",

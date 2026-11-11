@@ -1413,18 +1413,18 @@ private fun HeroSection(
             if (fromStage) MusicUi.stageFocused = false
             delay(120)
             val lostWithIt = !pageFocus[0] && pageLostAt[0] >= changedAt - 100
-            if (fromStage || lostWithIt) if (runCatching { heroFocus.requestFocus() }.isFailure) runCatching { firstTile.requestFocus() }
+            // The dock keeps the selection when the player goes because another tile was picked (that is what
+            // switched it off); the carousel only takes it back when the player vanished under a selection that was
+            // inside it.
+            val dockHasIt = MusicUi.focusPkg.value != null
+            if (!dockHasIt && (fromStage || lostWithIt)) if (runCatching { heroFocus.requestFocus() }.isFailure) runCatching { firstTile.requestFocus() }
         }
         // The trailer in place of the picture (under the text), or in its window.
         // The subtitles sit above the dock while it shows.
         val dockUp by animateFloatAsState(if (dockShown.value > 0.5f) metrics.collapsedH + metrics.bottomMargin else 0f, tween(300), label = "subsUp")
         if (!customBg && !musicStage && settings.trailerSize != "popup") TrailerLayer(app, s, dockUp)
         if (musicStage) {
-            MusicStage(app, s, heroFocus, firstTile, onApps = {
-                val apps = installedMusicApps(ctx)
-                if (apps.isEmpty()) toast(ctx, "No music app on this TV")
-                else onPop(PopState("Music apps", apps.map { (pkg, name) -> PopOption(name) { openMusicApp(ctx, pkg) } }, null))
-            })
+            MusicStage(app, s, heroFocus, firstTile)
         } else if (customBg) {
             // A large clock (with the depth effect on photos), and the place / credit of what's behind.
             if (settings.bgClock) BigClock(settings, s)
@@ -2093,7 +2093,7 @@ private fun Dock(
                                 FolderTile(
                                     app, s, radius, moving = movingPkg == FOLDER,
                                     modifier = base.focusRequester(folderFocus).onGloballyPositioned { PopAnchors.tiles[FOLDER] = it.boundsInRoot() },
-                                    onFocus = { f -> if (f) { onExpanded(r > 0); onMove() } },
+                                    onFocus = { f -> if (f) { onExpanded(r > 0); onMove(); MusicUi.onTileFocus(null) } },
                                     onMoveKey = onMoveKey, onClick = onFolder, onLong = onFolderMenu, edges = edges,
                                 )
                             }
@@ -2102,7 +2102,7 @@ private fun Dock(
                                 entry = e, app = app, s = s, radius = radius, moving = movingPkg == e.pkg,
                                 modifier = base.focusRequester(tileFocus.getOrPut(e.pkg) { FocusRequester() })
                                     .onGloballyPositioned { PopAnchors.tiles[e.pkg] = it.boundsInRoot() },
-                                onFocus = { f -> if (f) { onExpanded(r > 0); onMove() } },
+                                onFocus = { f -> if (f) { onExpanded(r > 0); onMove(); MusicUi.onTileFocus(e.pkg) } },
                                 onMoveKey = onMoveKey,
                                 onClick = { com.glasslauncher.tv.ui.AppLock.open(app, ctx, e) },
                                 onLong = { onMenu(e) }, edges = edges,
@@ -2153,12 +2153,12 @@ private fun VerticalDock(
                 androidx.compose.runtime.CompositionLocalProvider(LocalEdge provides (if (last) edge else { _ -> false })) {
                     if (e == null) key(FOLDER) {
                         FolderTile(app, s, radius, moving = movingPkg == FOLDER, modifier = base.focusRequester(folderFocus).onGloballyPositioned { PopAnchors.tiles[FOLDER] = it.boundsInRoot() },
-                            onFocus = { f -> if (f) { onExpanded(false); onMove() } }, onMoveKey = onMoveKey, onClick = onFolder, onLong = onFolderMenu, edges = edges)
+                            onFocus = { f -> if (f) { onExpanded(false); onMove(); MusicUi.onTileFocus(null) } }, onMoveKey = onMoveKey, onClick = onFolder, onLong = onFolderMenu, edges = edges)
                     } else key(e.pkg) {
                         DockTile(entry = e, app = app, s = s, radius = radius, moving = movingPkg == e.pkg,
                             modifier = base.focusRequester(tileFocus.getOrPut(e.pkg) { FocusRequester() })
                                     .onGloballyPositioned { PopAnchors.tiles[e.pkg] = it.boundsInRoot() },
-                            onFocus = { f -> if (f) { onExpanded(false); onMove() } }, onMoveKey = onMoveKey,
+                            onFocus = { f -> if (f) { onExpanded(false); onMove(); MusicUi.onTileFocus(e.pkg) } }, onMoveKey = onMoveKey,
                             onClick = { com.glasslauncher.tv.ui.AppLock.open(app, ctx, e) },
                             onLong = { onMenu(e) }, edges = edges)
                     }

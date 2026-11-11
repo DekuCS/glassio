@@ -92,6 +92,8 @@ private fun styleName(v: String) = when (v) { "water" -> "Dynamic Glass"; "water
 private fun themeName(v: String) = when (v) { "bow" -> "Black on white"; "amoled" -> "Black AMOLED"; "liquid" -> "Frosted Glass"; "clear" -> "Clear"; "water_still" -> "Still Glass"; "water" -> "Dynamic Glass"; else -> "Custom" }
 private fun hostOf(u: String) = runCatching { java.net.URI(u).host }.getOrNull() ?: "add-on"
 private fun pct(f: Float) = "${(f * 100).roundToInt()}%"
+/** A place off the middle in steps: "+3", "−2", "0" (no sign for none). */
+private fun pos(v: Int) = if (v == 0) "0" else (if (v > 0) "+" else "−") + kotlin.math.abs(v)
 private fun tenth(f: Float, d: Int) = ((f * 10).roundToInt() + d) / 10f
 
 /** Google Play page of [pkg], or a Play search for [query]; falls back to the web page. */
@@ -1134,16 +1136,26 @@ fun SettingsScreen(app: GlassApp, initialCat: Int, onClose: () -> Unit) {
                     add(Toggle("Music in the dock", "A Music icon (move, hide and change it like an app): opens the player", { st.musicDock }, { st.musicDock = it; app.apps.reload() }))
                     add(Toggle("Music mode", "While a song plays, the carousel's place becomes the player (artwork, song, buttons). ■ stops the music. With your own picture, photos, video or the screensaver's videos as the background, the island shows instead",
                         { st.musicMode }, { st.musicMode = it }))
-                    add(Adjust("  · Player size", "", { pct(st.musicStageScale) }, { st.musicStageScale = ((st.musicStageScale * 10).roundToInt() + it) / 10f }))
-                    add(Adjust("  · Buttons", "White or black turn the other way round when selected", {
-                        when (st.musicButtons) { "white" -> "White"; "black" -> "Black"; else -> "With the theme" }
-                    }, { st.musicButtons = cycle(listOf("theme", "white", "black"), st.musicButtons, it) }))
-                    add(Toggle("  · Only while the music app was open",
-                        "On: the player takes the carousel only when the app that plays (Spotify, YouTube Music…) was the last one in front — after Netflix or anything else the carousel stays as usual. Off: the player takes it whenever a song plays",
+                    add(Note("Player"))
+                    add(Adjust("  · Page size", "", { pct(st.musicStageScale) }, { st.musicStageScale = tenth(st.musicStageScale, it) }))
+                    add(Adjust("  · Player size", "", { pct(st.musicPlayerScale) }, { st.musicPlayerScale = tenth(st.musicPlayerScale, it) }))
+                    add(Adjust("  · Across", "The player's place on the page (0 stays the middle)", { pos(st.musicPlayerX) }, { st.musicPlayerX = st.musicPlayerX + it }))
+                    add(Adjust("  · Up / down", "", { pos(st.musicPlayerY) }, { st.musicPlayerY = st.musicPlayerY + it }))
+                    add(Adjust("  · Buttons", "White, black and frosted glass turn the other way round when selected", {
+                        when (st.musicButtons) { "white" -> "White"; "black" -> "Black"; "glass" -> "Frosted glass"; else -> "With the theme" }
+                    }, { st.musicButtons = cycle(listOf("theme", "white", "black", "glass"), st.musicButtons, it) }))
+                    add(Toggle("  · Only while the music app is selected",
+                        "On: the player takes the carousel only while the selection sits on the tile of the app that plays — the Spotify tile shows the player, any other tile (Nuvio, Netflix…) the ordinary home screen. Off: the player takes it whenever a song plays",
                         { st.musicFollowApp }, { st.musicFollowApp = it }))
+                    add(Note("Lyrics"))
                     add(Toggle("  · Lyrics beside the player",
                         "The song's words from lrclib.net, the line being sung lit up (only the title, artist, album and length are asked for). Without words the player keeps the whole width",
                         { st.musicLyrics }, { st.musicLyrics = it }))
+                    if (st.musicLyrics) {
+                        add(Adjust("  · Size", "", { pct(st.musicLyricsScale) }, { st.musicLyricsScale = tenth(st.musicLyricsScale, it) }))
+                        add(Adjust("  · Across", "0 stays where the words sit now", { pos(st.musicLyricsX) }, { st.musicLyricsX = st.musicLyricsX + it }))
+                        add(Adjust("  · Up / down", "", { pos(st.musicLyricsY) }, { st.musicLyricsY = st.musicLyricsY + it }))
+                    }
                     add(Note("Island on the screensaver"))
                     add(Toggle("Island", "While music plays, a small island at the top of the screensaver (like the iPhone's). ▲ opens it with its buttons, ▼ closes it", { st.musicIsland }, { st.musicIsland = it }))
                     add(Toggle("  · Island on the home screen too", "When Music mode is off", { st.islandHome }, { st.islandHome = it }))

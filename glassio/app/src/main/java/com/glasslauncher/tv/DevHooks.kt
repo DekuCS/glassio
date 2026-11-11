@@ -44,14 +44,14 @@ object DevHooks {
             app.apps.ordered(includeHidden = true).firstOrNull { it.pkg == pkg }?.let { e -> com.glasslauncher.tv.ui.AppLock.open(app, a, e) }
         }
         i.getIntExtra("open_settings", -1).takeIf { it >= 0 }?.let { app.requestSettings.intValue = it; app.requestSettingsRev.intValue++ }
-        // What the music page would do right now (read-only): the song, the app last in front, and the switches.
+        // What the music page would do right now (read-only): the song, the selected tile, and the switches.
         if (i.getBooleanExtra("dump_music", false)) {
             val t = com.glasslauncher.tv.data.NowPlaying.track.value
-            val fg = com.glasslauncher.tv.ui.MusicUi.lastForeground.value
+            val fg = com.glasslauncher.tv.ui.MusicUi.focusPkg.value
             val st = app.settings
             com.glasslauncher.tv.data.Glog.i("Music state: track=" + (t?.let { "${it.pkg} / ${it.title} / ${it.artist} playing=${it.playing}" } ?: "none") +
-                " front=$fg follow=${st.musicFollowApp} musicOn=${st.musicOn} musicMode=${st.musicMode}" +
-                " allowed=${com.glasslauncher.tv.ui.MusicUi.stageAllowed(st)} wasFront=${com.glasslauncher.tv.ui.MusicUi.songAppWasFront(t)}" +
+                " focus=$fg follow=${st.musicFollowApp} musicOn=${st.musicOn} musicMode=${st.musicMode}" +
+                " allowed=${com.glasslauncher.tv.ui.MusicUi.stageAllowed(st)} inFocus=${com.glasslauncher.tv.ui.MusicUi.songAppInFocus(t)}" +
                 " stage=${com.glasslauncher.tv.ui.MusicUi.stageOn(st, t)}")
             com.glasslauncher.tv.data.Glog.i("Music session: " + com.glasslauncher.tv.data.NowPlaying.debugLine(app))
         }
