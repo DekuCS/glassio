@@ -45,6 +45,8 @@ object RemoteMap {
             when {
                 a.startsWith("app:") -> {
                     val pkg = a.removePrefix("app:")
+                    // The app came from here, not from the remote button of the same name (Fire TV).
+                    StoreKeys.opened(pkg)
                     // A locked app asks for its code in GlassMyTV first.
                     if (pkg in app.settings.lockedApps) glass(app) { it.putExtra("open_app", pkg) }
                     else {

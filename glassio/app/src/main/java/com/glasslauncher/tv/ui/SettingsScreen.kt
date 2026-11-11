@@ -1136,6 +1136,9 @@ fun SettingsScreen(app: GlassApp, initialCat: Int, onClose: () -> Unit) {
                     add(Adjust("  · Buttons", "White or black turn the other way round when selected", {
                         when (st.musicButtons) { "white" -> "White"; "black" -> "Black"; else -> "With the theme" }
                     }, { st.musicButtons = cycle(listOf("theme", "white", "black"), st.musicButtons, it) }))
+                    add(Toggle("  · Only when you open it",
+                        "The carousel keeps its place while Spotify or another music app plays; the player comes up when you open it (the dock's Music icon, or ▶ in the menu)",
+                        { st.musicOnDemand }, { st.musicOnDemand = it }))
                     add(Note("Island on the screensaver"))
                     add(Toggle("Island", "While music plays, a small island at the top of the screensaver (like the iPhone's). ▲ opens it with its buttons, ▼ closes it", { st.musicIsland }, { st.musicIsland = it }))
                     add(Toggle("  · Island on the home screen too", "When Music mode is off", { st.islandHome }, { st.islandHome = it }))
@@ -1191,11 +1194,12 @@ fun SettingsScreen(app: GlassApp, initialCat: Int, onClose: () -> Unit) {
                     else dialog = MenuDialog("$title · ${keyName(get())}", listOf("Choose another button" to { capture() }, "Clear this button" to { set(0); tvRev.intValue++ }))
                 },
             )
+            val stores = com.glasslauncher.tv.data.StoreKeys
             buildList {
                 if (!svcOn) add(Note("The Netflix, YouTube, Prime and colour keys go to the TV itself before any app sees them. One press sets GlassMyTV up so they arrive here: Settings → System → \"Set up GlassMyTV\"."))
                 else add(Note("Netflix, YouTube, Prime and the colour keys arrive here now, before the TV starts their own app."))
                 add(Note("Buttons that open something"))
-                com.glasslauncher.tv.data.RemoteMap.all(st).forEach { m ->
+                com.glasslauncher.tv.data.RemoteMap.all(st).filter { it.code !in stores.TITLES.keys }.forEach { m ->
                     add(Act(keyName(m.code), com.glasslauncher.tv.data.RemoteMap.describe(m), "Change") {
                         dialog = MenuDialog(keyName(m.code), listOf(
                             "Open something else" to { choose(m.code) },
@@ -1206,6 +1210,23 @@ fun SettingsScreen(app: GlassApp, initialCat: Int, onClose: () -> Unit) {
                 add(Act("Add a button", "Press a remote button (Netflix, YouTube, a colour button…), then choose an app, the Apps folder, the recent apps or an input", "Add") {
                     dialog = KeyCaptureDialog("Press the button you want") { code -> choose(code) }
                 })
+                // Fire TV's own buttons: their keys never reach any app, so they are chosen here without pressing.
+                if (com.glasslauncher.tv.data.SystemSetup.isFireTv()) {
+                    add(Note("Fire TV's own buttons"))
+                    for ((code, title) in stores.TITLES) {
+                        val have = com.glasslauncher.tv.data.RemoteMap.find(st, code)
+                        add(Act(title,
+                            if (have != null) com.glasslauncher.tv.data.RemoteMap.describe(have)
+                            else "Fire TV starts its own app by itself for this button; pick what it opens instead. Its own app shows for a blink first",
+                            if (have != null) "Change" else "Set") {
+                            if (have == null) choose(code)
+                            else dialog = MenuDialog(title, listOf(
+                                "Open something else" to { choose(code) },
+                                "Leave the TV's own app" to { com.glasslauncher.tv.data.RemoteMap.remove(st, code); tvRev.intValue++ },
+                            ))
+                        })
+                    }
+                }
                 add(Note("GlassMyTV's buttons"))
                 addAll(keyRow("Shuffle button", "On the home screen: the catalog titles in a new random order", { st.shuffleKey }, { st.shuffleKey = it }))
                 addAll(keyRow("Multi-view button", "Anywhere: the cameras in the middle (again closes them)", { st.multiKey }, { st.multiKey = it }))

@@ -93,7 +93,7 @@ object NowPlaying {
     fun start(ctx: Context) {
         val app = ctx.applicationContext
         lastCtx = app
-        if (started || !hasAccess(app)) { if (started) pick(app); return }
+        if (started || !hasAccess(app)) { poll(app); if (started) pick(app); return }
         runCatching {
             val m = app.getSystemService(MediaSessionManager::class.java) ?: return
             msm = m
@@ -101,6 +101,30 @@ object NowPlaying {
             started = true
             pick(app)
         }.onFailure { Glog.w("Now playing", it) }
+        poll(app)
+    }
+
+    /**
+     * A quiet check every few seconds. Fire TV keeps a notification listener switched off at boot even when it is
+     * in the enabled list, and a music app that started while that was so never announced itself:
+     * the sessions are asked for again instead of waiting for a change that doesn't come.
+     */
+    @Volatile private var poller: Thread? = null
+    private fun poll(app: Context) {
+        if (poller?.isAlive == true) return
+        poller = Thread({
+            while (true) {
+                try {
+                    Thread.sleep(if (track.value == null) 2_500L else 10_000L)
+                    if (!hasAccess(app)) continue
+                    if (!started) start(app) else pick(app)
+                } catch (e: InterruptedException) {
+                    return@Thread
+                } catch (t: Throwable) {
+                    Glog.w("Now playing poll", t)
+                }
+            }
+        }, "glass-music").apply { isDaemon = true; start() }
     }
 
     /** Apps that play music as well as video: followed while they play (music left playing in YouTube). */
@@ -148,20 +172,35 @@ object NowPlaying {
     @Volatile private var pendingPlaying: Boolean? = null
     @Volatile private var pendingUntil = 0L
 
+    /**
+     * The artwork a song showed once. Spotify sends the album art with one update and nothing (or only its own app
+     * icon) with the next, and the music page's background flickered between the album art and the Spotify logo all
+     * the time. The album art is kept for the song and used again, the app icon is never used as artwork.
+     */
+    private val artBySong = object : LinkedHashMap<String, Bitmap>(24, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap>?) = size > 24
+    }
+
     /** The song of one session, or nothing (no title, stopped, or stopped from GlassMyTV). */
     private fun trackOf(c: MediaController): Track? {
         val md = c.metadata ?: return null
         val ps = c.playbackState
         val title = md.getString(MediaMetadata.METADATA_KEY_TITLE) ?: md.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
         if (title.isNullOrBlank()) return null
-        val art = md.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: md.getBitmap(MediaMetadata.METADATA_KEY_ART) ?: md.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+        val artist = md.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: md.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE) ?: ""
+        val songKey = "${c.packageName}|$title|$artist"
+        val fresh = md.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: md.getBitmap(MediaMetadata.METADATA_KEY_ART)
+        val art = if (fresh != null) {
+            synchronized(artBySong) { artBySong[songKey] = fresh }
+            fresh
+        } else synchronized(artBySong) { artBySong[songKey] }
         val state = ps?.state ?: PlaybackState.STATE_NONE
         if (stoppedToken != null && c.sessionToken == stoppedToken) {
             if (state == PlaybackState.STATE_PLAYING) stoppedToken = null else return null
         }
         if (state == PlaybackState.STATE_STOPPED || state == PlaybackState.STATE_NONE || state == PlaybackState.STATE_ERROR) return null
         return Track(
-            c.packageName, title, md.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: md.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE) ?: "",
+            c.packageName, title, artist,
             md.getString(MediaMetadata.METADATA_KEY_ALBUM) ?: "", art, md.getLong(MediaMetadata.METADATA_KEY_DURATION),
             ps?.position ?: 0L, ps?.lastPositionUpdateTime ?: android.os.SystemClock.elapsedRealtime(), ps?.playbackSpeed?.takeIf { it > 0f } ?: 1f,
             state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING,

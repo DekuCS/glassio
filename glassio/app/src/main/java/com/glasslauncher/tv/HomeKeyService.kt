@@ -15,6 +15,7 @@ import android.view.accessibility.AccessibilityEvent
  */
 class HomeKeyService : AccessibilityService() {
     private var lastLaunch = 0L
+    private var lastBounce = 0L
     private var homeDownAt = 0L
     private var longDone = false
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -73,7 +74,10 @@ class HomeKeyService : AccessibilityService() {
         camera = CameraOverlay(this, cams, st.cameraCornerSec, start, st.cameraCycleSec, st.cameraScale).also { it.show() }
     }
 
-    private fun enabled(): Boolean = (application as? GlassApp)?.settings?.interceptHome == true
+    private fun enabled(): Boolean = (application as? GlassApp)?.settings?.interceptHome != false
+
+    /** Fire TV: Amazon's own home screen (it comes up on every Home press, whatever the home app says). */
+    private val FIRE_HOME = setOf("com.amazon.tv.launcher", "com.amazon.firehomestarter")
 
     private fun showGlass() {
         val now = System.currentTimeMillis()
@@ -91,6 +95,9 @@ class HomeKeyService : AccessibilityService() {
     private val sp by lazy { getSharedPreferences("glass_home_key", MODE_PRIVATE) }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
+        // Which keys the TV really hands to this service (the Home key and the store buttons on Fire TV).
+        // One line per key press, not per repeat: it is what Settings → System's "why doesn't my button" needs.
+        if (event.action == KeyEvent.ACTION_UP) com.glasslauncher.tv.data.Glog.i("key ${event.keyCode} reached the service")
         // The camera in the corner: Back closes it (holding Home again too); every other key goes to the app as usual.
         multi?.takeIf { it.showing }?.let { m ->
             if (event.keyCode == KeyEvent.KEYCODE_BACK) { if (event.action == KeyEvent.ACTION_UP) { m.close(); multi = null }; return true }
@@ -157,6 +164,24 @@ class HomeKeyService : AccessibilityService() {
         }
         if (!enabled()) return
         val pkg = event.packageName?.toString() ?: return
+        // Fire TV's Netflix / Prime buttons: the firmware starts the store's app before any app sees the key, so
+        // what the button was set to opens over it.
+        (application as? GlassApp)?.let { if (com.glasslauncher.tv.data.StoreKeys.onFront(it, pkg)) return }        // Fire TV: the Home key never reaches this service (Amazon's launcher has it in the firmware), so the
+        // moment its home screen comes up it is covered by GlassMyTV again. Home lands here, no Amazon screen stays.
+        if (pkg in FIRE_HOME) {
+            val cls = event.className?.toString().orEmpty()
+            if (cls.contains("HomeActivity") || cls.contains("HomeStarterActivity") || cls.contains("MainActivity") || cls.contains("LauncherActivity")) {
+                val now = android.os.SystemClock.uptimeMillis()
+                launcherHomeAt = now
+                // Not more than once a second: the launcher can report two windows as it comes up.
+                if (now - lastBounce < 900) return
+                lastBounce = now
+                com.glasslauncher.tv.data.Glog.i("Fire TV home window ($pkg/$cls): opening GlassMyTV")
+                lastLaunch = 0L
+                showGlass()
+            }
+            return
+        }
         if (pkg != "com.google.android.apps.tv.launcherx" && pkg != "com.google.android.tvlauncher") return
         val launcherHome = event.className?.toString().orEmpty().let { it.contains("HomeActivity") || it.contains("MainActivity") || it.contains("LauncherActivity") }
         if (launcherHome) {

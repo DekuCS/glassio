@@ -41,11 +41,19 @@ import com.glasslauncher.tv.GlassApp
  */
 object WhatsNew {
     /** Bumped when the tour has new pages: everyone who updates sees it once. */
-    const val ID = 59
+    const val ID = 60
 
     class Page(val title: String, val points: List<String>, val where: String)
 
     val PAGES = listOf(
+        Page("What's new in GlassMyTV 1.0.3", listOf(
+            "Fire TV: the Home button opens GlassMyTV again. Amazon's launcher can't be switched off (Fire OS protects it), so GlassMyTV covers its home screen the moment it appears — it shows for a split second.",
+            "Fire TV: the Netflix and Prime Video buttons can be mapped now, under Remote mapping. The TV's own app shows for a blink first, then what you chose opens.",
+            "The music player in the carousel has a new look: larger artwork with a soft shadow, the song's colour in the progress bar, and the times either side of it.",
+            "The background no longer flickers between the album cover and the Spotify logo: the cover is kept for the song.",
+            "Music · \"Only when you open it\": the carousel keeps its place while anything plays, and the player comes up when you open it.",
+            "◀ ▶ to look through · OK for the next page · Back to close.",
+        ), "Home: Settings → System · Netflix/Prime buttons: Settings → Remote mapping · Player: Settings → Music."),
         Page("What's new in GlassMyTV 1.0.2", listOf(
             "One button sets it all up: home app, Home button, the TV's own buttons (Netflix, Prime) and the music access — Settings → System.",
             "Fire TV: Home opens GlassMyTV again. Amazon's launcher kept the Home button for itself; the setup switches that launcher off, and switches it back on there too.",

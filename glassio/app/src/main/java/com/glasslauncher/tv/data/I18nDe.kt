@@ -669,5 +669,15 @@ object I18nDe {
         "Fire TV: the Netflix and Prime buttons can be mapped now — they arrive at GlassMyTV once Amazon's launcher is out of the way." to "Fire TV: Die Netflix- und Prime-Tasten lassen sich jetzt belegen — sie kommen bei GlassMyTV an, sobald Amazons Startbildschirm aus dem Weg ist.",
         "Spotify and the other music apps show what is playing again (the music access is part of the one button)." to "Spotify und die anderen Musik-Apps zeigen wieder, was läuft (der Musik-Zugriff gehört zum einen Knopf).",
         "Settings → System · Remote buttons: Settings → Remote mapping." to "Einstellungen → System · Fernbedienungstasten: Einstellungen → Fernbedienung.",
+        "  · Only when you open it" to "  · Nur wenn du sie öffnest",
+        "The carousel keeps its place while Spotify or another music app plays; the player comes up when you open it (the dock's Music icon, or ▶ in the menu)" to "Das Karussell bleibt stehen, während Spotify oder eine andere Musik-App läuft; der Player kommt, wenn du ihn öffnest (das Musik-Symbol im Dock oder ▶ im Menü)",
+        "–:–" to "–:–",
+        "What's new in GlassMyTV 1.0.3" to "Neu in GlassMyTV 1.0.3",
+        "Fire TV: the Home button opens GlassMyTV again. Amazon's launcher can't be switched off (Fire OS protects it), so GlassMyTV covers its home screen the moment it appears — it shows for a split second." to "Fire TV: die Home-Taste öffnet wieder GlassMyTV. Amazons Launcher lässt sich nicht abschalten (Fire OS schützt ihn), deshalb legt sich GlassMyTV sofort über dessen Startbildschirm — er ist nur einen Wimpernschlag zu sehen.",
+        "Fire TV: the Netflix and Prime Video buttons can be mapped now, under Remote mapping. The TV's own app shows for a blink first, then what you chose opens." to "Fire TV: die Netflix- und Prime-Video-Taste lassen sich jetzt belegen, unter Fernbedienung. Zuerst blitzt die eigene App des Fernsehers auf, dann öffnet sich, was du gewählt hast.",
+        "The music player in the carousel has a new look: larger artwork with a soft shadow, the song's colour in the progress bar, and the times either side of it." to "Der Musik-Player im Karussell hat ein neues Aussehen: größeres Cover mit weichem Schatten, die Farbe des Songs im Fortschrittsbalken und die Zeiten links und rechts davon.",
+        "The background no longer flickers between the album cover and the Spotify logo: the cover is kept for the song." to "Der Hintergrund flackert nicht mehr zwischen Albumcover und Spotify-Logo: das Cover bleibt für den Song erhalten.",
+        "Music · \"Only when you open it\": the carousel keeps its place while anything plays, and the player comes up when you open it." to "Musik · „Nur wenn du sie öffnest“: das Karussell bleibt stehen, während etwas läuft, und der Player kommt, wenn du ihn öffnest.",
+        "Home: Settings → System · Netflix/Prime buttons: Settings → Remote mapping · Player: Settings → Music." to "Home: Einstellungen → System · Netflix-/Prime-Tasten: Einstellungen → Fernbedienung · Player: Einstellungen → Musik",
     )
 }

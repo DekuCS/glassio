@@ -60,7 +60,7 @@ object AppLock {
         val go = {
             if (e.pkg == MusicUi.DOCK_PKG) MusicUi.openFromDock(app)
             else if (com.glasslauncher.tv.data.Inputs.isInput(e.pkg)) com.glasslauncher.tv.data.Inputs.open(ctx, e.pkg)
-            else app.apps.launchIntent(e)?.let { runCatching { ctx.startActivity(it) } }
+            else app.apps.launchIntent(e)?.let { com.glasslauncher.tv.data.StoreKeys.opened(e.pkg); runCatching { ctx.startActivity(it) } }
             Unit
         }
         if (!locked(app, e.pkg)) { go(); return }

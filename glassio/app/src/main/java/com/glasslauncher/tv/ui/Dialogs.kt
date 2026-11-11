@@ -202,6 +202,8 @@ private fun KeyCaptureView(d: KeyCaptureDialog, onDismiss: () -> Unit) {
 /** A remote button's name for Settings ("Red", "Play/Pause"…). */
 fun keyName(code: Int): String = when (code) {
     0 -> "Not set"
+    com.glasslauncher.tv.data.StoreKeys.NETFLIX -> "Netflix button"
+    com.glasslauncher.tv.data.StoreKeys.PRIME -> "Prime Video button"
     else -> android.view.KeyEvent.keyCodeToString(code).removePrefix("KEYCODE_").split('_')
         .joinToString(" ") { w -> w.lowercase().replaceFirstChar { it.uppercase() } }
 }

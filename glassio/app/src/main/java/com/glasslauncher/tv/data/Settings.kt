@@ -207,6 +207,11 @@ class Settings(private val ctx: Context) {
     var musicDock: Boolean get() = b("musicDock", true); set(v) = putB("musicDock", v)
     /** Music mode: while a song plays, the home screen's background becomes the player (whatever background you chose). */
     var musicMode: Boolean get() = b("musicMode", false); set(v) = putB("musicMode", v)
+    /**
+     * The player only on request: the home screen keeps its carousel until the music page is opened (the dock's
+     * Music icon), instead of the player taking the carousel's place as soon as anything plays.
+     */
+    var musicOnDemand: Boolean get() = b("musicOnDemand", false); set(v) = putB("musicOnDemand", v)
     var musicStageScale: Float get() = f("musicStageScale", 0.9f); set(v) = putF("musicStageScale", v.coerceIn(0.7f, 1.4f))
     /** theme | white | black: the player's buttons (the other way round when selected). */
     var musicButtons: String get() = s("musicButtons", "white"); set(v) = putS("musicButtons", v)
@@ -577,7 +582,7 @@ class Settings(private val ctx: Context) {
     }
 
     // ---- System
-    var interceptHome: Boolean get() = b("interceptHome", false); set(v) = putB("interceptHome", v)
+    var interceptHome: Boolean get() = b("interceptHome", true); set(v) = putB("interceptHome", v)
     /** Opens GlassMyTV when the TV starts (needs the "display over other apps" right, given over ADB). */
     var bootStart: Boolean get() = b("bootStart", false); set(v) = putB("bootStart", v)
     /** Manage from phone: minutes the page stays on after you leave that screen (0 = stops at once). */

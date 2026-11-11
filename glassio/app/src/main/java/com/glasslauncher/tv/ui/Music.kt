@@ -165,7 +165,7 @@ object MusicUi {
     val focusRev = androidx.compose.runtime.mutableIntStateOf(0)
     /** Whether the music page takes the home screen now. */
     fun stageOn(st: com.glasslauncher.tv.data.Settings, song: NowPlaying.Track?): Boolean =
-        song != null && ((st.musicOn && st.musicMode && stageAllowed(st)) || forced.value)
+        song != null && (forced.value || (st.musicOn && st.musicMode && !st.musicOnDemand && stageAllowed(st)))
     /** The dock's Music icon: the music page if something plays, else the menu's music page (the apps). */
     fun openFromDock(app: com.glasslauncher.tv.GlassApp) {
         if (NowPlaying.track.value != null) { forced.value = true; focusRev.intValue++ }
@@ -499,19 +499,30 @@ fun MusicStage(app: GlassApp, s: Float, heroFocus: FocusRequester, firstTile: Fo
     // The artwork by its look, not by the picture object (the app sends a new one with every update).
     val artKey = remember(tr.art) { MusicUi.artKey(tr.art) }
     val artImg = remember(artKey) { tr.art?.asImageBitmap() }
+    val accent = remember(tr.art) { MusicUi.tint(tr.art) }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (prev != null) Image(prev.back, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         if (cur != null) Image(cur.back, null, Modifier.fillMaxSize().graphicsLayer { alpha = if (prev != null) MusicUi.stageMix.value else 1f },
             contentScale = ContentScale.Crop)
-        // The page darkened as before (the blurred artwork at 85 % on black, then 35 % black over it), and more while
-        // paused (the glass over it dims the same way: its veil).
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
+        // A scrim that darkens the middle less than the top and bottom, so the artwork reads as a page and the
+        // names stay readable on any album (a flat black veil made bright covers muddy).
+        Box(Modifier.fillMaxSize().background(
+            androidx.compose.ui.graphics.Brush.verticalGradient(
+                0f to Color.Black.copy(alpha = 0.62f),
+                0.32f to Color.Black.copy(alpha = 0.18f),
+                0.62f to Color.Black.copy(alpha = 0.40f),
+                1f to Color.Black.copy(alpha = 0.80f),
+            )
+        ))
         Box(Modifier.fillMaxSize().graphicsLayer { alpha = MusicUi.pauseDim.value * VEIL_DIM }.background(Color.Black))
-        Column(Modifier.align(Alignment.Center).offset(y = (-34 * s).dp).onFocusChanged { MusicUi.stageFocused = it.hasFocus },
+        Column(Modifier.align(Alignment.Center).offset(y = (-30 * s).dp).onFocusChanged { MusicUi.stageFocused = it.hasFocus },
             horizontalAlignment = Alignment.CenterHorizontally) {
-            // A soft shadow under the artwork, as if it floats over the page.
-            Box(Modifier.size((190 * k).dp).shadow((22 * k).dp, RoundedCornerShape((14 * k).dp), ambientColor = Color.Black, spotColor = Color.Black)
-                .clip(RoundedCornerShape((14 * k).dp)).background(Color.White.copy(alpha = 0.08f))) {
+            // The artwork on a soft shadow, its corners rounded and a thin light edge: one object floating over
+            // the page rather than a rectangle pasted on it.
+            Box(Modifier.size((210 * k).dp)
+                .shadow((26 * k).dp, RoundedCornerShape((18 * k).dp), ambientColor = Color.Black, spotColor = Color.Black)
+                .clip(RoundedCornerShape((18 * k).dp)).background(Color.White.copy(alpha = 0.08f))
+                .border((1 * s).dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape((18 * k).dp))) {
                 androidx.compose.animation.Crossfade(artImg, animationSpec = tween(700), label = "art") { img ->
                     if (img != null) Image(img, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 }
@@ -519,24 +530,35 @@ fun MusicStage(app: GlassApp, s: Float, heroFocus: FocusRequester, firstTile: Fo
           androidx.compose.animation.Crossfade(tr.title to tr.artist, animationSpec = tween(600), label = "song") { (title, artist) ->
            // One fixed width for both names while they cross-fade (each was laid out from the left: the new name
            // jumped to the left of the old one, then back to the middle).
-           Column(Modifier.width((560 * k).dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Spacer(Modifier.height((16 * k).dp))
-            Text(com.glasslauncher.tv.data.I18n.tr(title), color = Color.White, fontSize = (19 * k).sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = (520 * k).dp))
-            if (artist.isNotBlank()) Text(com.glasslauncher.tv.data.I18n.tr(artist), color = Color.White.copy(alpha = 0.7f), fontSize = (13 * k).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+           Column(Modifier.width((620 * k).dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(Modifier.height((20 * k).dp))
+            Text(com.glasslauncher.tv.data.I18n.tr(title), color = Color.White, fontSize = (22 * k).sp, fontWeight = FontWeight.SemiBold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = (560 * k).dp))
+            if (artist.isNotBlank()) {
+                Spacer(Modifier.height((3 * k).dp))
+                Text(com.glasslauncher.tv.data.I18n.tr(artist), color = Color.White.copy(alpha = 0.72f), fontSize = (14 * k).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
            }
           }
-            Spacer(Modifier.height((12 * k).dp))
-            val p = progressOf(tr)
-            Box(Modifier.width((300 * k).dp).height((3 * k).dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.25f))) {
-                Box(Modifier.fillMaxWidth(p).height((3 * k).dp).background(Color.White))
-            }
             Spacer(Modifier.height((16 * k).dp))
+            val p = progressOf(tr)
+            Row(Modifier.width((330 * k).dp), verticalAlignment = Alignment.CenterVertically) {
+                // The times: what has played, and how long the song is (the bar between them).
+                Text(clock(tr.positionNow()), color = Color.White.copy(alpha = 0.55f), fontSize = (10 * k).sp)
+                Spacer(Modifier.width((9 * k).dp))
+                Box(Modifier.weight(1f).height((4 * k).dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.22f))) {
+                    Box(Modifier.fillMaxWidth(p).height((4 * k).dp).clip(RoundedCornerShape(50))
+                        .background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color.White, accent.copy(alpha = 0.9f)))))
+                }
+                Spacer(Modifier.width((9 * k).dp))
+                Text(clock(tr.duration), color = Color.White.copy(alpha = 0.55f), fontSize = (10 * k).sp)
+            }
+            Spacer(Modifier.height((18 * k).dp))
             val look = st.musicButtons
             val light = st.dockStyle == "bow" && look == "theme"
-            val big = (40 * k).dp; val small = (32 * k).dp
+            val big = (46 * k).dp; val small = (34 * k).dp
             val shuffled = NowPlaying.shuffled.value
-            Row(horizontalArrangement = Arrangement.spacedBy((14 * k).dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy((16 * k).dp), verticalAlignment = Alignment.CenterVertically) {
                 MusicButton(small, look, light, Modifier.focusProperties { down = firstTile }, active = shuffled, onOff = true, onClick = { NowPlaying.shuffle(ctx, !shuffled) }) { shuffleGlyph(it) }
                 MusicButton(small, look, light, Modifier.focusProperties { down = firstTile }, onClick = { NowPlaying.previous() }) { skipGlyph(it, false) }
                 MusicButton(big, look, light, Modifier.focusRequester(heroFocus).focusProperties { down = firstTile }, onClick = { NowPlaying.playPause() }) { playGlyph(it, tr.playing) }
@@ -549,10 +571,21 @@ fun MusicStage(app: GlassApp, s: Float, heroFocus: FocusRequester, firstTile: Fo
                 }) { stopGlyph(it) }
                 MusicButton(small, look, light, Modifier.focusProperties { down = firstTile }, onClick = onApps) { listGlyph(it) }
             }
-            Spacer(Modifier.height((8 * k).dp))
-            Text(NowPlaying.appLabel(tr.pkg), color = Color.White.copy(alpha = 0.45f), fontSize = (9 * k).sp)
+            Spacer(Modifier.height((12 * k).dp))
+            // The app it comes from, as a small pill (the artwork's colour faintly behind it).
+            Box(Modifier.clip(RoundedCornerShape(50)).background(accent.copy(alpha = 0.16f)).padding(horizontal = (10 * k).dp, vertical = (3 * k).dp)) {
+                Text(NowPlaying.appLabel(tr.pkg), color = Color.White.copy(alpha = 0.75f), fontSize = (9.5f * k).sp)
+            }
         }
     }
+}
+
+/** A song time as m:ss (h:mm:ss from an hour on). */
+private fun clock(ms: Long): String {
+    if (ms <= 0) return "–:–"
+    val total = ms / 1000
+    val h = total / 3600; val m = (total % 3600) / 60; val sec = total % 60
+    return if (h > 0) "$h:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}" else "$m:${sec.toString().padStart(2, '0')}"
 }
 
 /** The menu's music page (▶ from the menu, or the dock's Music icon): a small player like Apple's. */
